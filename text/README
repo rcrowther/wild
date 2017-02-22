@@ -1,0 +1,88 @@
+==Refs
+Compiler construction,
+http://lambda.uta.edu/cse5317/fall02/notes/notes.html
+
+Java bytecode,
+http://docs.oracle.com/javase/specs/jvms/se7/html/
+
+NASM documentation,
+http://www.nasm.us/xdoc/2.12.02/html/nasmdoc0.html
+
+== ideas
+not nested classes, but an indication/annotation for nesting (what about complementary objects? So use naming?)
+TempleOS documentation?
+if can only use else with method?
+Converters from C and Python
+Nice if ''from, to, until' not keywords
+Yes to camelCase
+Scala type testing. Ans please, please, let me RUN it.
+If we do get a true converter, how about a Python-maintained second version, for general use?
+Most good code has a logger... whats the difference t a printer? Should it be in libraries? Should it be built in?
+== typed documentation
+#! TODO
+#? TOCONSIDER
+#!!! TODO in future
+#(!  or ?)ok done
+#x deprecated
+#?x deprecated
+
+== Design
+1 Python not Ruby
+2 lexer
+3 parser
+4 parser with tree
+5 symbols/atoms shou;ld be tree units
+
+
+== Literals
+Enums can be done by symbol vals in a namespace?
+Codepoints, do we need them? Set them by an imported Enum if needed.
+
+== Operators
+
+> greater
+>> move left
+>>> type?
+
+! not
+
+= eq
+== allocate
+=== type?
+
++ - * %
++ add
+++ inc
+
+- minus
+-- dec
+
+* multiply
+** power
+
+% divide
+%% power -1
+
+index???
+
+## grammar
+parameter definitions take new symbols for use within. Parameter usage takes existing symbols for specialization of the contents.
+
+def zaa!(): int
+   ...
+end
+
+Short for e.g.
+
+def (zaa!(): int (
+   ...
+)
+)
+
+as is
+
+val zee! 88
+
+short for e.g.
+
+val (zee!(): int (88))

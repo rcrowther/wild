@@ -1,0 +1,67 @@
+declExtenalFunc funcId
+declExtenalFunc dji
+declExtenalFunc funcWithParams
+declExtenalFunc zee
+declExtenalFunc printstr
+
+defconst zee -3.142
+defconst str1 "thou"
+defspace zii 4
+defspace zmap 8
+defspace zstr 8
+
+
+# literals
+
+# expressions
+call funcId
+
+# right order?
+toReg 0 76
+add 0 9
+
+toReg 0 99
+div 0 -0.75
+
+# funcWithParams(83 : int dji() *(2 3) )
+# x32 code calls subfuncs in order
+## to stack
+toParam 0 83
+call dji
+toParam 1 returnReg 
+toReg 0 2
+mult 0 3
+toParam 2 0 
+#
+
+# x64 version moves func calls in the register slots 
+# up to the top...
+call dji
+toParam 1 returnReg
+toParam 0 83
+toParam 2 2 
+mult slot3 3
+
+call funcWithParams
+
+
+# assignment
+# needs declaration/allocaton?
+
+# NB: higher constructs do not map to splicecode
+# sometimes short circuited as constants etc.
+toSpace zii 6
+toSpace zmap 2 
+toSpace zstr str1
+
+# parametered expressions
+toParam 0 blow
+toParam 1 puff
+call funcId
+
+
+
+call funky
+toParam 0 returnReg
+call printstr
+

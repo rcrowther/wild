@@ -1,0 +1,43 @@
+
+# singleline comment 
+## multiline trial
+#
+
+
+# literals
++99
+-0.4 : float
+""floozy" : UTF8
+
+# expressions
+funcId!()
+
++(76 9)
+%(99 -0.75) : int
+
+funcWithParams(83 : int dji() *(2 3) )
+
+
+# assignment
+val zee! -3.142
+val zii! 6 : int[u32]
+val zmap! 2 : List[List[Int] Map[Key Val]]
+val zstr ""thou"
+
+# parametered ezpressions
+fnc funcId! (blow puff) (
+#""stringy return"
+)
+
+fnc funcBe! (zee!: int zii! : int) (
+
+)
+
+#funcCe!() dee!()
+
+#if (a or not b) (
+#)
+
+print(zee!())
+#println zee!
+#""screwy"

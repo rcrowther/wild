@@ -1,0 +1,367 @@
+#!/usr/bin/python3
+
+import sys
+#import io
+#from io import *
+from Position import Position
+#from Reporter import Reporter
+from reporters import Reporter
+from tokens import *
+from Trees import *
+from Kinds import *
+from wildio import *
+
+
+##
+# Position/reporter
+# Continue the block() build
+# Make all rules return results?
+# But 'and' can fail in a rule?
+# There is a difference between 'didn't start with this' and 'started ok but failed'?
+class TokenSyntaxer:
+    '''
+    '''
+    def __init__(self, tokenIt, reporter):
+        self.it = tokenIt
+        self.tok = tokens['empty']
+        self._next()
+        # Token offset must be where it started,
+        # Not where it is...
+        self.prevLine = 1
+        self.prevOffset = 1
+        self.treeRoot = Expression('TREE_ROOT')
+        # let's go
+        self.root()
+
+    def ast(self):
+        return self.treeRoot
+
+    def textOf(self):
+        return self.it.textOf()
+
+    def _next(self):
+        self.prevLine = self.it.lineCount()
+        self.prevOffset = self.it.lineOffset()
+        self.tok = self.it.__next__()
+
+    def error(self, m):
+        txt = self.it.textOf()
+        if (txt):
+            txtO = "\n                token text : '{0}'".format(txt)
+        else:
+            txtO = ''
+
+        pos = Position(self.it.source(), self.prevLine, self.prevOffset)
+        reporter.error(m + txtO, pos)
+
+        sys.exit("Error message")
+
+
+    ## Parse utilities ##
+    # deprecated?
+    def match(self, tok):
+       if (tok == self.tok):
+         self._next()
+       else:
+         self.error("Expected '{0}' but found '{1}'".format(
+             tokenToString[tok],
+             tokenToString[self.tok]
+             ))
+
+
+    def toMatch(self, optionalRule):
+      tok = self.tok
+      r = optionalRule()
+      if (not r):
+         self.error("Expected '{0}' but found '{1}'".format(
+             tokenToString[tok],
+             tokenToString[self.tok]
+             ))
+
+    def forwardMatch(self, tokenName):
+      '''
+      Step forward and error if not matching the token.
+      '''
+      self._next()
+      tok = tokens[tokenName]
+      if (tok != self.tok):
+        self.error("Expected '{0}' but found '{1}'".format(
+             tokenToString[tok],
+             tokenToString[self.tok]
+             ))
+
+    def option(self, tok):
+       exists = (tok == self.tok)
+       if (exists):
+         self._next()
+       return exists
+
+    def isToken(self, tokenName):
+       return (tokens[tokenName] == self.tok)
+
+##?
+    def testOr(self, tokenNames):
+       matched = False
+       i = len(tokenNames)
+       while(not matched and i > 0):
+           i -= 1
+           matched = (tokens[tokenNames[i]] == self.tok)
+       return tokens[tokenNames[i]] if matched else None
+
+    def testOrRules(self, rules, tree):
+       matched = False
+       i = len(rules)
+       while(True):
+           i -= 1
+           matched = rules[i](tree)
+           if (matched or i < 0):
+               break
+       return matched
+
+
+    def forwardMatchOr(self, tokens):
+       self._next()
+       matched = False
+       i = len(tokens)
+       while(not matched and i > 0):
+           i -= 1
+           matched = (self.tok == tokens[i])
+
+       if (not matched):
+         self.error("Expected one of '{0}' but found '{1}'".format(
+             tokensToString(tokens, '/'),
+             tokenToString[self.tok]
+             ))
+
+    # deprecate?
+    def matchOr(self, tokens):
+       matched = False
+       i = len(tokens)
+       while(not matched and i > 0):
+           i -= 1
+           matched = self.option(tokens[i])
+
+       if (not matched):
+         self.error("Expected one of '{0}' but found '{1}'".format(
+             tokensToString(tokens, '/'),
+             tokenToString[self.tok]
+             ))
+
+    def matchOrRules(self, rules, tree):
+       matched = False
+       i = len(rules)
+       while(True):
+           i -= 1
+           matched = rules[i](tree)
+           if (matched or i < 0):
+               break
+
+       if (not matched):
+         self.error("Expected one of '{0}' but found '{1}'".format(
+             tokensToString(tokens, '/'),
+             tokenToString[self.tok]
+             ))
+
+
+
+    ## Rules ##
+
+    ## literals
+    def constantExpression(self, tree):
+        commit = self.testOr(['intNum', 'floatNum', 'string'])
+        if (commit):
+            tpe = None
+            if (self.isToken('intNum')):
+                tpe = INTEGER_CONSTANT       
+            if (self.isToken('floatNum')):
+                tpe = FLOAT_CONSTANT
+            if (self.isToken('string')):
+                tpe = STRING_CONSTANT
+            t = tree.addConstant(self.textOf(), tpe)
+            self._next()
+            self.optionalKindAnnotation(t)
+        return commit
+
+    def identifierExpression(self, tree):
+        commit = self.isToken('identifier')
+        if (commit):
+            t = tree.addExpression(self.textOf())
+            self._next()
+            commitParams = self.isToken('lbracket')
+            if (commitParams):
+                self._next()
+                while(self.expression(t)):
+                    pass
+                self.match(tokens['rbracket'])
+            self.optionalKindAnnotation(t)
+        return commit
+
+    def expression(self, tree):
+        commit = self.testOrRules([
+            self.constantExpression,
+            self.identifierExpression
+            ], tree)
+        #if (commit):
+         #   self.optionalKindAnnotation()
+        return commit
+
+
+
+    ## Kind
+    def optionalGenericParams(self, kind):
+       if (self.isToken('lsquare')):
+           self._next()
+           self.optionalGenericParamList(kind)
+           self.match(tokens['rsquare'])
+
+    def optionalGenericParamList(self, kind):
+        while (self.isToken('identifier')):
+            k = kind.appendContentKind(self.textOf())
+            self._next()
+            self.optionalGenericParams(k)
+
+    def optionalKindAnnotation(self, tree):
+        if (self.isToken('colon')):
+           self.forwardMatch('identifier')
+           k = tree.setReturnKind(self.textOf())
+           self._next()
+           # add contents
+           self.optionalGenericParams(k)
+           #tree Expression('type-annotation')
+
+
+    ## Params
+    '''
+    def explictParams(self, tree):
+        commit = self.isToken('lbracket')
+        if (commit):
+            self._next()
+            while(self.isToken('identifier')):
+                p = tree.appendParameter(self.textOf())
+                self._next()
+                # optional kind sets return kind?
+                self.optionalKindAnnotation(p)
+            self.match(tokens['rbracket'])
+        return commit
+    '''
+    def defineParameters(self, tree):
+        self.option(tokens['lbracket'])
+        while(self.isToken('identifier')):
+            p = tree.addMark(self.textOf())
+            self._next()
+            # optional type...           
+        self.option(tokens['rbracket'])
+
+
+    ## declarations
+    def defineVal(self, tree):
+        '''
+        Definitions of singular data
+        '''
+        commit = self.isToken('val')
+        if(commit):
+            t = tree.addExpression('val')
+            self.forwardMatch('identifier')
+            mark = self.textOf()
+            t.addMark(mark)
+            t.mutable = mark.endswith('!') 
+            self._next()
+            # this is expression..
+            self.expression(t)
+        return commit
+
+
+    def defineFunction(self, tree):
+        '''
+        Definitions attached to code blocks
+        '''
+        commit = self.isToken('fnc')
+        if(commit):
+             t = tree.addExpressionWithBody('fnc')
+             self.forwardMatch('identifier')
+             t.addMark(self.textOf())
+             self._next()
+             # generic params?
+             self.defineParameters(t)
+             # self.block(t)
+             #self.defineBody(t)
+             # t.setBody(t)
+             self.match(tokens['solidus'])
+        return commit 
+
+
+
+
+    #def optionalGenericParam(self, kind):
+    #        k = kind.appendContentKind(self.textOf())
+
+
+
+
+
+
+
+        
+
+
+    ## Comment
+    def comment(self, tree):
+        commit = self.isToken('comment')
+        if (commit):
+            tree.appendChild(Comment(self.textOf().strip()))
+            self._next()
+        return commit
+
+    def multilineComment(self, tree):
+        commit = self.isToken('multilineComment')
+        if (commit):
+            tree.appendChild(Comment(self.textOf().strip()))
+            self._next()
+        return commit
+
+
+    def block(self, tree):
+        t = tree.appendChild(Expression('block'))
+        while(
+            self.comment(t)
+            or self.multilineComment(t)
+            or self.defineVal(t)
+            or self.defineFunction(t)
+            or self.expression(t)
+            ):
+            #print('loo')
+            pass
+
+    def root(self):
+        try:
+            self.block(self.treeRoot)
+            # if we don't except on StopIteration...
+            self.error('Parsing did not complete')
+        except StopIteration:
+            # All ok
+            pass
+
+
+       
+
+#test
+
+#from StringIterator import StringIterator
+#from TokenIterator import TokenIterator
+#from Source import Source
+from reporters.ConsoleStreamReporter import ConsoleStreamReporter
+
+srcPath = "/home/rob/Desktop/wild/test/test.wild"
+
+s = Source(srcPath)
+it = StringIterator(s, s.get())
+
+tokenIt = TokenIterator(it)
+reporter = ConsoleStreamReporter()
+p = TokenSyntaxer(tokenIt, reporter)
+
+print('tree:')
+print(p.ast().toFrameString())
+
+#print(src)
+print("done syntax")
