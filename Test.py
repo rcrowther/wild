@@ -4,13 +4,29 @@ import unittest
 from SymbolTables import kindSymbolTable, expressionActionSymbolTable
 #from Kinds import *
 import SymbolTables
+import wildio.Source
+import reporters.ConsoleStreamReporter
+import TokenSyntaxer
 
 class Test(unittest.TestCase):
     '''
     python3 -m unittest Test
     '''
     def setUp(self):
-      pass
+      srcPath = "/home/rob/Desktop/wild/test/test.wild"
+      self.src = wildio.Source.Source(srcPath)
+      self.tokenIt = self.src.tokenIterator()
+      self.reporter = reporters.ConsoleStreamReporter.ConsoleStreamReporter()
+
+    def test_syntax(self):
+      '''
+      python3 -m unittest Test.Test.test_syntax
+      '''
+      p = TokenSyntaxer.TokenSyntaxer(self.tokenIt, self.reporter)
+      print('tree:')
+      #print(p.ast().toFrameString())
+      print(p.ast().toPrettyString())
+
 
     def test_symbol_tables(self):
       '''

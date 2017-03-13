@@ -1,7 +1,7 @@
 
 from Kinds import Kind, Any, IntegerKind, StringKind
 
-from collections import namedtuple
+#from collections import namedtuple
 
 #SymbolData = namedtuple('SymbolData', 'isDefined dataRef')
 

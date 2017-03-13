@@ -2,11 +2,9 @@
 
 
 from Phase import Phase
-from TokenSyntaxer import TokenSyntaxer
 #from reporters import Reporter
-from phases.TreeActions import FuncUnnest
+from phases.TreeActions import ParseLiveRanges, RegisterAllocate, FuncUnnest
 
-# As Subcomponent
 class FunctionUnnestPhase(Phase):
     '''
     Only needed if a code generator has a call convention using registers e.g. i64, but not standard i32.
@@ -20,8 +18,8 @@ class FunctionUnnestPhase(Phase):
     This would not apply to machine codeable functions, which can be slotted in place?
     Must be run after FunctionCategorize. Should come after Uniminus.
     '''
-    def __init__(self):
-
+    def __init__(self, architectureContext):
+        self.architectureContext = architectureContext
         Phase.__init__(self,
             "funcUnnest",
             "Unnest custom functions",
@@ -31,6 +29,27 @@ class FunctionUnnestPhase(Phase):
 
     def run(self, compilationUnit):
       tree = compilationUnit.tree
-      FuncUnnest(tree)
+      FuncUnnest(tree, compilationUnit.newNames, self.architectureContext)
 
+
+# As Subcomponent
+class ParseLiveRangesPhase(Phase):
+    '''
+    Must be run after Unnest.
+    '''
+    def __init__(self, reporter):
+        self.reporter = reporter
+
+        Phase.__init__(self,
+            "ParseLiveRanges",
+            "Identify and collect the live ranges of variables",
+            True
+            )
+
+
+    def run(self, compilationUnit):
+      tree = compilationUnit.tree
+      p = ParseLiveRanges(tree, self.reporter)
+      print(p.toString())
+      ranges = p.result()
 

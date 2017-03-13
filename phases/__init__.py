@@ -1,8 +1,6 @@
 from phases.InternPhase import InternPhase
-from phases.MarkNormalizePhase import MarkNormalizePhase
 from phases.NASMPreprocessPhase import NASMPreprocessPhase
-from phases.FunctionCategorizePhase import FunctionCategorizePhase
-from phases.UnaryMinusPhase import UnaryMinusPhase
-from phases.FunctionUnnestPhase import FunctionUnnestPhase
+from phases import TreePhases, LinearizePhases
+
 
 

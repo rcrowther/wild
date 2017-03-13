@@ -1,4 +1,3 @@
-#!/usr/bin/python3
 
 '''
 Tokens are not the same as expression symbols. Sometimes

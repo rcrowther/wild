@@ -1,4 +1,8 @@
 
+package wildTest (
+
+import freaky.dudes
+
 # singleline comment 
 ## multiline trial
 #
@@ -10,7 +14,7 @@
 ""floozy" : UTF8
 
 # expressions
-funcId!()
+wildTest.funcId!()
 
 +(76 9)
 %(99 -0.75) : int
@@ -29,7 +33,7 @@ fnc funcId! (blow puff) (
 #""stringy return"
 )
 
-fnc funcBe! (zee!: int zii! : int) (
+fnc funcBe! (aby!: int beeby! : int) (
 
 )
 
@@ -41,3 +45,5 @@ fnc funcBe! (zee!: int zii! : int) (
 print(zee!())
 #println zee!
 #""screwy"
+
+)

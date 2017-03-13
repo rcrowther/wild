@@ -34,14 +34,9 @@ class TestIO(unittest.TestCase):
       python3 -m unittest wildio.IOTest.TestIO.test_token_iter
       '''
       s = Source(self.srcPath)
-      it = StringIterator(s, s.get())
-
-      tokenIt = TokenIterator(it)
+      tokenIt = s.tokenIterator()
       print(tokenIt.source().pathAsString() + ':')
-      for t in tokenIt:
-        txt = tokenIt.textOf()
-        txtO = " txt:" + txt if (txt) else ''
-        print(str(tokenIt.tok) + " '" + tokenToString.get(tokenIt.tok) + "'" + txtO)
+      print(tokenIt.toString())
 
 
     def test_splicecode_iter(self):

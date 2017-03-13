@@ -113,9 +113,9 @@ class VisitorBuilderRebuilder(VisitorBuilderBase):
         self._indent(')')
 
     def addExpressionWithBody(self, tree):
-      self.addMark(tree.actionMark)
+      self.addMark(str(tree.actionMark))
       if tree.defMark:
-          self.addMark(tree.defMark)
+          self.addMark(str(tree.defMark))
       self.addList(tree.children)
       self.addReturnKind(tree)
       self.incIndent()
@@ -125,9 +125,9 @@ class VisitorBuilderRebuilder(VisitorBuilderBase):
     def addExpression(self, tree):
       #self.b.append('Expression(')
       #self.b.extend(self.actionMark.addString(b))
-      self.addMark(tree.actionMark)
+      self.addMark(str(tree.actionMark))
       if tree.defMark:
-          self.addMark(tree.defMark)
+          self.addMark(str(tree.defMark))
       #self.b.append('(')
       self.addList(tree.children)
       #self.b.append(')')
@@ -196,10 +196,10 @@ class VisitorBuilder(VisitorBuilderBase):
     def addExpressionWithBody(self, tree):
       self.b.append('ExpressionWithBody(')
           #self.b.extend(self.actionMark.addString(b))
-      self.addMark(tree.actionMark)
+      self.addMark(str(tree.actionMark))
       self.b.append(' ')
       if tree.defMark:
-          self.addMark(tree.defMark)
+          self.addMark(str(tree.defMark))
           self.b.append(' ')
       self.addReturnKind(tree)
       self.addList(tree.children)
@@ -209,19 +209,19 @@ class VisitorBuilder(VisitorBuilderBase):
     def addExpression(self, tree):
       self.b.append('Expression(')
       #self.b.extend(self.actionMark.addString(b))
-      self.addMark(tree.actionMark)
+      self.addMark(str(tree.actionMark))
       self.b.append(' ')
       if tree.defMark:
-          self.addMark(tree.defMark)
+          self.addMark(str(tree.defMark))
           self.b.append(' ')
       self.addReturnKind(tree)
       self.addList(tree.children)
       self.b.append(')')
 
     def addMark(self, tree):
-      self.b.append('Mark(""')
-      self.b.append(tree.data)
-      self.b.append('")')
+      #self.b.append('Mark(""')
+      self.b.append(str(tree))
+      #self.b.append('")')
 
     def addConstant(self, tree):
       self.b.append('Constant(')
@@ -291,9 +291,9 @@ class PrettyVisitorBuilder(VisitorBuilder):
       self._indent('ExpressionWithBody(')
       #print('rt:' + tree.returnKind.toString())
       self.incIndent()
-      self.addMark(tree.actionMark)
+      self.addMark(str(tree.actionMark))
       if tree.defMark:
-          self.addMark(tree.defMark)
+          self.addMark(str(tree.defMark))
           self.b.append(' ')
       self.addIndentedReturnKind(tree)
       self.addList(tree.children)
@@ -305,9 +305,9 @@ class PrettyVisitorBuilder(VisitorBuilder):
     def addExpression(self, tree):
       self._indent('Expression(')
       self.incIndent()
-      self.addMark(tree.actionMark)
+      self.addMark(str(tree.actionMark))
       if tree.defMark:
-          self.addMark(tree.defMark)
+          self.addMark(str(tree.defMark))
           self.b.append(' ')
       self.addIndentedReturnKind(tree)
       self.addList(tree.children)
@@ -382,11 +382,11 @@ class TaggedPrettyVisitorBuilder(VisitorBuilder):
 
     def _addExpressionCommon(self, tree):
       self._indentTag('actionMark')
-      VisitorBuilder.addMark(self, tree.actionMark)
+      VisitorBuilder.addMark(self, str(tree.actionMark))
       self._newline()
       self._indentTag('defMark')
       if tree.defMark:
-          VisitorBuilder.addMark(self, tree.defMark)
+          VisitorBuilder.addMark(self, str(tree.defMark))
       self._newline()
       self._indentTag('returnKind')
       self.addIndentedReturnKind(tree)
@@ -394,7 +394,10 @@ class TaggedPrettyVisitorBuilder(VisitorBuilder):
       self._indentTag('children')
       self._newline()
       self.addList(tree.children)
-
+      self._indentTag('register')
+      self.b.append(str(tree.register))
+      self._newline()
+      #self._newline()
 
     def addExpressionWithBody(self, tree):
       self._indent('ExpressionWithBody(')
@@ -460,14 +463,14 @@ class TerseVisitorBuilder(VisitorBuilderBase):
 
 
     def addExpressionWithBody(self, tree):
-      self.addMark(tree.actionMark)
+      self.addMark(str(tree.actionMark))
       self.b.append('(')
       self.addList(tree.children)
       self.addList(tree.body)
       self.b.append(')')
 
     def addExpression(self, tree):
-      self.addMark(tree.actionMark)
+      self.addMark(str(tree.actionMark))
       self.addList(tree.children)
 
 
@@ -534,7 +537,7 @@ class TersePrettyVisitorBuilder(VisitorBuilderBase):
       self._indent(')')
 
     def addExpression(self, tree):
-      self.addMark(tree.actionMark)
+      self.addMark(str(tree.actionMark))
       self.incIndent()
       self.addList(tree.children)
       self.decIndent()

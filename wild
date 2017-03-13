@@ -1,0 +1,118 @@
+#!/usr/bin/python3
+
+import sys
+import os
+
+import RunnerContext
+from codeGen.CodeGenContext import X64CodeGenContext
+
+from wildio.Source import Source
+from CompilationUnit import *
+from reporters.ConsoleStreamReporter import ConsoleStreamReporter
+from Settings import Settings
+
+
+
+def reportHelp(settings):
+    usage = "Usage: wild <options> <filepaths>\nRun the wild compiler.\nIf no argument is given, the interpreter is run.\n\nOptions:\n"
+    settingStr = settings.toHelpString()
+    credits = "\n\nRob Crowther\nI don't know why"
+    print(usage + settingStr + credits)
+
+
+def expandFiles(reporter, filePaths): 
+    # get and verify files 
+    entryFiles = []
+    if not filePaths:
+       entryFiles = [f2 for f2 in os.listdir('.')]
+    else:
+        for f in filePaths:
+            if(os.path.isfile(f)):
+                entryFiles.append(f)
+            elif(os.path.isdir(f)):
+                entryFiles.extend([os.path.join(f, f2) for f2 in os.listdir(f)])
+            else:
+                reporter.warning('filepath not found:ignored:filepath:{0}'.format(f))
+    return entryFiles
+
+'''
+Crude commandline parser. Works though.
+Takes an optional argument to a switch using a closed '=' e.g.
+?cb
+XOtree=False
+?
+does nothing. Or,
+?cb
+  XCphaseStop=UnaryMinus
+?
+stops at that phase.
+'''
+invokation = sys.argv[0]
+reporter = ConsoleStreamReporter()
+#switches = []
+files = []
+
+limit = len(sys.argv)
+
+if (limit == 1):
+# Do something with empty args
+# probably go interactive
+    print('running interactive?')
+else:
+    # compiler, I think
+    settings = Settings()
+
+    if (('-h' in sys.argv) or ('-help' in sys.argv)):    
+      reportHelp(settings)
+    else:
+        i = 1
+        while (i < limit):
+            arg = sys.argv[i]
+            if (arg[0] != '-'):
+               # not a switch, reached paths
+               break
+            else:
+               optText = arg[1:]
+               idx = optText.find('=')
+               if (idx != -1):
+                   opt = optText[:idx]
+                   value = optText[idx + 1:]
+               else:
+                   opt = optText
+                   value = True
+    
+               
+               parseOk = settings.testAndSetValue(opt, value)
+               if (not parseOk):
+                 reporter.warning('commandline option unrecognised:switch: {0}'.format(opt))    
+            i += 1
+        
+        # get files
+        while (i < limit):
+            arg = sys.argv[i]
+            files.append(arg)
+            i += 1
+        
+        
+        #print(invokation)
+        #print(switches)
+        #print(files)
+    
+        # get and verify files 
+        entryFiles = expandFiles(reporter, files)
+        filteredFiles = [f for f in entryFiles if (f[-5:] == '.wild')]
+    
+        if (not filteredFiles):
+            reporter.error('no files found to parse: expanded filenames:{0}'.format(str(entryFiles)))
+        else:
+    
+            #print(filteredFiles)    
+    
+            # run
+            src = Source(filteredFiles[0])
+            cu = CompilationUnit(src)
+    
+            #settings.setValue('XOtree', True)
+            ctx = RunnerContext.RunnerContext(reporter, X64CodeGenContext(), settings)
+            ctx.run(cu)
+    

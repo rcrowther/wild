@@ -3,14 +3,15 @@
 from wildio.StringIterator import StringIterator
 from tokens import *
 
-from wildio.Source import Source
+from util.codeUtils import StdSeqPrint, multilineToString
 
 ## TODO:
 # Test for end
 # Need to test for '$' initially, as used to mark 
 # internal-generated names and marked-up operator to alphanumeric transforms.
 # Not reporting errors?
-class TokenIterator:
+#! this is for string sources?
+class TokenIterator(StdSeqPrint):
     '''
     Iterate comments, identifiers, numerics, etc.
     Very simple, compared to other efforts, but it works.
@@ -32,6 +33,7 @@ class TokenIterator:
     Stalling on punctuation allows identifiers to push against punctuation. Operator identifiers also stall on numbers, to allow '-20' etc.
     '''
     def __init__(self, srcItr):
+        StdSeqPrint.__init__(self, 'TokenIterator')
         self.it = srcItr
         self.b = []
         self.tok = 99
@@ -254,31 +256,23 @@ class TokenIterator:
         self.getNext()
         return self.tok
 
-    def addString(self, b):
-        first = True
-        for e in self:
-           if first:
-             first = False
-           else:
-             b.append(', ')
-           b.append(tokenToString[e])
-           if (
-             e == tokens['intNum']
-             or e == tokens['floatNum']
-             or e == tokens['identifier']
-           ):
-             b.append(':')
-             b.append(self.textOf())
-           elif (e == tokens['intNum']
-             or e == tokens['string']
-           ):
-             b.append(':""')
-             b.append(self.textOf())
-             b.append('"')
-            
-    def toString(self):
-        b = []
-        b.append('TokenIterator(')
-        self.addString(b)
-        b.append(')')
-        return ''.join(b)
+
+    def toPrettyString(self):
+       return ''.join(self.addStringWithSeparator([], '\n'))
+
+    def addStringWithSeparator(self, b, sep):
+       first = True
+       for e in self:
+          if (first):
+            first = False
+          else:
+            b.append(sep)
+            b.append(tokenToString[e])
+            txt = self.textOf()
+            if (txt):
+               b.append(' -> ')
+               o = multilineToString(txt)
+               b.append(o)
+       return b
+
+

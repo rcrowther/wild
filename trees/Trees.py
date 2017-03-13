@@ -9,21 +9,52 @@ import Position
 
 from enumerations import FuncRenderType
 
+from collections import namedtuple
+
+from util.codeUtils import StdPrint 
+
+#PathedIdentifier = namedtuple('SymbolData', 'path identifier')
+
+class PathedIdentifier(namedtuple('SymbolData', 'path identifier')):
+        '''
+        path list of identifiers
+        '''
+        #@property
+        #def hypot(self):
+        #    return (self.x ** 2 + self.y ** 2) ** 0.5
+        def __str__(self):
+            #return 'PathedIdentifier(path -> {0}, identifier -> {1})'.format(self.path, self.identifier)
+            b = ['PathedIdentifier(']
+            if (self.path):
+                b.append(str(self.path))
+                b.append(', ')
+            b.append(self.identifier)
+            b.append(')')
+            #return 'PathedIdentifier(path -> {0}, identifier -> {1})'.format(self.path, self.identifier)
+            return ''.join(b)
+
+NoPathedIdentifier = PathedIdentifier([], '')
+
+
+
+
 ## 
 # Tidy up _toFrameString
 # We do need to keep positions in the tree, because of compiler phases,
 # Which otherwise do not know position of error.
-class Tree:
+class Tree(StdPrint):
     '''
     Base tree. 
     Tree enables constant iteration, so includes every syntax rule.
     The base class does very little and is never instatiated.
     '''
     def __init__(self, position = Position.NoPosition):
+        StdPrint.__init__(self, 'Tree')
         # if constant
         # if expression
         # if data
         # if kind...
+
 
         self.position = position
         # For expressions, a fast call
@@ -43,6 +74,11 @@ class Tree:
         The field defaults to saying this expression is rendered as a call.
         '''
         self.renderCategory = FuncRenderType.NOT_FUNC
+        #? The below is not necessary, may become supplemental nodes?
+        # ok as a default from here down the ancestory. See renderCategory also
+        #? not needed for comments and Marks, but yes for Expressions and Constants? 
+        self.register = None
+
    
     #def isTwig(self):
     #    '''
@@ -94,20 +130,12 @@ class Tree:
       #b = TersePrettyVisitorBuilder(self)
       return "".join(b.result())
 
-    def entitySuffix(self):
-        return 'Tree'
 
     def addString(self, b):
        return b
 
-    def toString(self):
-      #b = VisitorBuilder(self, True)
-      b = []
-      b.append(self.entitySuffix())
-      b.append('(')
-      self.addString(b)
-      b.append(')')
-      return "".join(b)
+
+
 
 NoTree = Tree(Position.NoPosition)
 
@@ -117,11 +145,10 @@ class Comment(Tree):
     Has no children, returnKind, parameters, genericParameters...
     '''
     def __init__(self, data, position):
+        StdPrint.__init__(self, 'Comment')
         self.data = data
         Tree.__init__(self, position)
 
-    def entitySuffix(self):
-        return 'Comment'
 
     def addString(self, b):
        if (len(self.data) > 8):
@@ -142,6 +169,7 @@ class ExpressionBase(Tree):
     Never activated.
     '''
     def __init__(self, position = Position.NoPosition):
+        StdPrint.__init__(self, 'ExpressionBase')
         Tree.__init__(self, position)
         self.returnKind = UnknownKind
         # Big question over how to handle defines
@@ -158,6 +186,7 @@ class ExpressionBase(Tree):
         # fnc x(a b)()
         # ExpressionWithBody(actionMark: 'fnc,  defMark: 'x, (a b) ())
         self.defMark = None
+        self.defMark = NoPathedIdentifier
 
     # Needs testing for compatibility if called more than once?
     # What if we know a kind name but not type?
@@ -166,18 +195,11 @@ class ExpressionBase(Tree):
         self.returnKind = k
         return k
 
-    def setDefMark(self, name):
-        m = Mark(name)
-        self.defMark = m
-        return m
-
-    def entitySuffix(self):
-        return 'ExpressionBase'
 
     def addString(self, b):
+       #if (self.defMark !=  No  ):
        b.append('defmark: ')
-       if (self.defMark):
-           b.append(self.defMark.data)
+       b.append(str(self.defMark))
        b.append(', returnKind: ')
        self.returnKind.addString(b)
        return b
@@ -235,16 +257,11 @@ class Constant(ExpressionBase):
     @tpe general type of Constant i.e. Enum
     '''
     def __init__(self, position, data, tpe):
+        StdPrint.__init__(self, 'Constant')
         ExpressionBase.__init__(self, position)
         self.data = data
         self.tpe = tpe
         self.returnKind = Any
-
-    #def isTwig(self):
-    #    return True
-
-    def entitySuffix(self):
-        return 'Constant'
 
     def addString(self, b):
        ExpressionBase.addString(self, b)
@@ -273,21 +290,17 @@ def StringConstant(data, position = Position.NoPosition):
 
 class Mark(ExpressionBase):
     '''
-    ...or Symbol.
+    Currently unused, but may be shortcut to no-param calls.
     Not evaluated or compiled, a pointer to some place.
     Has no children, parameters, generic parameters...
     Has data/name. Inherits returnKind
     '''
     def __init__(self, data):
+        StdPrint.__init__(self, 'Mark')
         ExpressionBase.__init__(self, Position.NoPosition)
         self.data = data
         self.returnKind = Any
 
-    #def isTwig(self):
-    #    return True
-
-    def entitySuffix(self):
-        return 'Mark'
 
     def addString(self, b):
        ExpressionBase.addString(self, b)
@@ -295,28 +308,34 @@ class Mark(ExpressionBase):
        b.append(self.data)
        return b
 
+
 class Expression(ExpressionBase):
     '''
     Adds an actionmark, seperately (can be anonymous 'lambda'). Note this this could be builtin '+(33 2)' or a definition 'slant(55)'
     Has an actionmark, built as an instance of Mark.
     Has children params. These can be for calls (list of any expression tree) or for a definition (Mark only, see ExpressionWithBody)
     Inherits returnKind. 
+    actionMark a pathedIdentifier
     '''
     def __init__(self, actionMark, position = Position.NoPosition):
+        StdPrint.__init__(self, 'Expression')
         ExpressionBase.__init__(self, position)
         # if constant
         # if expression
         # if data
         # if kind...
-        self.actionMark = Mark(actionMark)
+        #self.actionMark = Mark(actionMark)
+        self.actionMark = actionMark
         self.children = []
         # Used in defs
-        # May be extended to a series of flags?
+        #? May be extended to a series of flags?
         self.isMutable = False
         self.hasParams = True
         self.isNonAtomicExpression = True
-        # ok as a default from here down the ancestory
+        #? The below is not necessary, may become supplemental nodes?
+        # ok as a default from here down the ancestory. See register also
         self.renderCategory = FuncRenderType.CALL
+        self.register = None
 
     def isDefFromConst(self):
         '''
@@ -361,25 +380,13 @@ class Expression(ExpressionBase):
     def updateChild(self, fromObj, newObj):
         self.children = [newObj if e==fromObj else e for e in self.children]
 
-    #def isTwig(self):
-    #    r = (len(self.children) == 0)
-    #    return r
 
-# ValDef is useful?
-
-   # def isTwigParent(self):
-   #     r = True
-   #     for c in self.children:
-   #       r = r and c.isTwig()
-   #     return r        
-
-    def entitySuffix(self):
-        return 'Expression'
 
     def addString(self, b):
        ExpressionBase.addString(self, b)
        b.append(', actionMark: ')
-       b.append(self.actionMark.data)
+       #b.append(self.actionMark.data)
+       b.append(str(self.actionMark))
        b.append(', childCount: ')
        b.append(str(len(self.children)))
        return b
@@ -390,9 +397,11 @@ class ExpressionWithBody(Expression):
     '''
     Used for defining values and functions 
     Also used for main block.
+    
+    defMark a pathedIdentifier
     '''
     def __init__(self, actionMark, position = Position.NoPosition):
-        #self.body = NoTree
+        StdPrint.__init__(self, 'ExpressionWithBody')
         self.body = []
         self.hasBody = True
         Expression.__init__(self, actionMark, position)
@@ -423,9 +432,6 @@ class ExpressionWithBody(Expression):
         idx = self.body.index(seekObj)
         self.body.insert(idx, newObj)
 
-
-    def entitySuffix(self):
-        return 'ExpressionWithBody'
 
     def addString(self, b):
        Expression.addString(self, b)

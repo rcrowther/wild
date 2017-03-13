@@ -4,6 +4,7 @@
 from Position import NoPosition
 
 #! need a flush?
+#! need a print
 class Reporter:
 
     def __init__(self):

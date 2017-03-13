@@ -11,6 +11,7 @@ import graphviz.builder
 # classes like SyntaxAnalyzer
 #! add reporter
 #! cant be 
+#a http://www.scala-lang.org/old/sid/2
 class OrderedDependency():
     
     def eq(self, that):

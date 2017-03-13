@@ -1,0 +1,99 @@
+== Lexing
+=== Vals/vars
+~ val'inline
+const inline a: label
+~ val 
+const a: label(dd 8)
+~ var
+a: label(dd 8)
+~ val'addr
+ref const a: addr(dd 8)
+~ var'addr
+ref a: addr(dd 8)
+
+
+=== Syntax
+
+== CodeGen
+All this depends on architecture
+
+Jobs to do:
+identify machine vs. code calls
+raise seqences
+raise functions
+(raises would always use a temp storage solution)
+
+We need:
+To know numbers of instructions in scopes (so can allocate)
+To know types of instructions. Constants may reduce to machine code macros, so do not take part in liveness analysis, register allocation. Or those marts must be resolved
+To know what is macroed
+To know what is a call, what is a potential instruction
+
+
+To be a tree, so expression nodes can be reordered
+To keep track of what goes where, and instructions
+
+
+We do not need:
+Which registers, or locations
+Laayout of storage
+Understand the difference between references and not?
+(this could be the big one, why it is not a stock IR)
+
+Unneeded AST:
+Comments
+Types after instruction decisions
+
+Lacking AST:
+Returns needed from Expressions?
+
+One question---add data to original tree, transform to new trees, or build analysis trees over original? 
+
+
+=== Marks
+Can they be equivalent to machine code labels? But there is a difference between jump labels, function calls, and variable call? Or, ignoring jump labels, is there a difference?
+
+This is due to uncertainty over if a mark is any symbol, or standalone as a function call.
+
+Ok, a mark is not a function call (because can have type).
+ 
+==== Cannonical trees
+
+
+    ESEQ(s1,ESEQ(s2,e)) = ESEQ(SEQ(s1,s2),e)
+    BINOP(op,ESEQ(s,e1),e2) = ESEQ(s,BINOP(op,e1,e2))
+    MEM(ESEQ(s,e)) = ESEQ(s,MEM(e))
+    JUMP(ESEQ(s,e)) = SEQ(s,JUMP(e))
+    CJUMP(op,ESEQ(s,e1),e2,l1,l2) = SEQ(s,CJUMP(op.e1,e2,l1,l2))
+    BINOP(op,e1,ESEQ(s,e2)) = ESEQ(MOVE(temp(t),e1),ESEQ(s,BINOP(op,TEMP(t),e2)))
+    CJUMP(op,e1,ESEQ(s,e2),l1,l2) = SEQ(MOVE(temp(t),e1),SEQ(s,CJUMP(op,TEMP(t),e2,l1,l2)))
+    MOVE(ESEQ(s,e1),e2) = SEQ(s,MOVE(e1,e2))
+
+    # nested seq = one seq
+    SEQ(s1,SEQ(s2,e)) = SEQ(s1,s2,e)
+    # nested param seq means nothing
+    BINOP(op,SEQ(s,e1),e2) = SEQ(s,BINOP(op,e1,e2))
+    # nested seq means nothing in expressions, either
+    EXP(SEQ(s,e)) = SEQ(s,EXP(e))
+    # Functions and ops can have sequences extracted
+    BINOP/FUNC(e1, SEQ(s,e2)) = SEQ(MOVE(temp(t),e1), BINOP/FUNC(TEMP(t),e2))
+    # can the above go further?
+    BINOP/FUNC(e1, SEQ(s,e2)) = SEQ(MOVE(temp(t1),e1), MOVE(temp(t2),e2), BINOP/FUNC(TEMP(t1),TEMP(t2)))
+    # Extraction works for all ops, including the complex CJUMP
+    # CJUMP = comparison jump
+    CJUMP(op,e1,ESEQ(s,e2),l1,l2) = SEQ(MOVE(temp(t),e1), MOVE(temp(t2),e2), SEQ(s, CJUMP(op,TEMP(t),temp(t2),l1,l2)))
+    # And works for the non-first-language op MOVE
+    MOVE(SEQ(s,e1),e2) = SEQ(s, MOVE(e1,e2))
+
+    # Explicitly stash function results
+    BINOP/FUNC() = SEQ(MOVE(temp(t), BINOP/FUNC()))
+
+Also, there is CJUMP false targeting, when CJUMP false target is moved first (is this necessary?)
+
+=== Liveness analysis
+We know
+When variables start (a non-call name is allocated to)
+When calls stop---the last mention
+That registers may be swapped out when the variable is live but inactive
+That functions require sets of registers and so are intrusive
+

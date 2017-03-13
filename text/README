@@ -8,8 +8,20 @@ http://docs.oracle.com/javase/specs/jvms/se7/html/
 NASM documentation,
 http://www.nasm.us/xdoc/2.12.02/html/nasmdoc0.html
 
+
+http://web.cs.ucla.edu/~palsberg/course/cs132/linearscan.pdf
+
 == ideas
+Can drop naturally to untyped Any, even removing type
+goto methods, unscoped methoeds?
+COMEFROM, and auto debugger?
+monads = type in = type out? Or bind. And construction/'unit' funcs
+...or define chains of expressinfg actions. As opposed to iterators, and short cuircuits? How is a short circuit in Haskel? How to do that in LISP notation?
+literate programming switch and converter
+genrics, defo
+options, yes! and other types. Checked and optomising unchecked.
 not nested classes, but an indication/annotation for nesting (what about complementary objects? So use naming?)
+The above also suggests using function calls for 'else' in if/else
 TempleOS documentation?
 if can only use else with method?
 Converters from C and Python

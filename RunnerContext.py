@@ -6,7 +6,7 @@ from reporters import *
 from Settings import Settings
 from SyntaxPhase import SyntaxPhase
 from codeGen.CodeGenPhase import CodeGenPhase
-
+import codeGen.architectureContext
 import phases
 from SymbolTables import *
 import collections
@@ -78,6 +78,7 @@ class RunnerContext:
         self.kindSymbolTable.clear()
         self.settings = Settings() if not settings else settings
         self.codeGenContext = codeGenContext 
+        self.architectureContext = codeGenContext.architectureContext
         self.reporter = reporter
         # init
         self.phases = PhaseList(self._internalPhases())
@@ -85,16 +86,17 @@ class RunnerContext:
     def _internalPhases(self):
        return [
        SyntaxPhase(self.reporter, self.settings),
-       phases.MarkNormalizePhase(self.reporter, self.settings),
+       phases.TreePhases.MarkNormalizePhase(self.reporter, self.settings),
        phases.InternPhase(self.expSymbolTable, self.reporter, self.settings),
-       phases.UnaryMinusPhase(self.reporter, self.settings),
+       phases.TreePhases.UnaryMinusPhase(self.reporter, self.settings),
        #? This can't go here. Point of fact, it must go as
        # processing on the final file, as the CodeGenPhase needs
        # to see operators etc.? (what about FunctionCategorizePhase?)
        #phases.NASMPreprocessPhase(self.reporter, self.settings),
-       phases.FunctionCategorizePhase(self.codeGenContext, self.reporter, self.settings),
-       phases.FunctionUnnestPhase(),
-       CodeGenPhase(self.reporter, self.codeGenContext, self.settings)
+       phases.TreePhases.FunctionCategorizePhase(self.codeGenContext, self.reporter, self.settings),
+       phases.LinearizePhases.FunctionUnnestPhase(self.architectureContext),
+       phases.LinearizePhases.ParseLiveRangesPhase(self.reporter)
+       #CodeGenPhase(self.reporter, self.codeGenContext, self.settings)
        ]
 
 
@@ -108,17 +110,13 @@ class RunnerContext:
     def run(self, compilationUnit):
        # If output tokens, print and quit
        if (self.settings.getValue('XOtokens')):
-         # TODO: reduce to only the token iterator, remove imports
-         s = compilationUnit.source
-         it = wildio.StringIterator(s, s.get())
-         tokenIt = wildio.TokenIterator(it)
-         self.reporter.info(tokenIt.toString())
+         self.reporter.info('Tokens:\n' + compilationUnit.source.tokenIterator().toPrettyString())
          sys.exit(0)
 
        # If setting data output, print and quit
        if (self.settings.getValue('XOsettings')):
-         self.reporter.info(self.settings.toString())
-         sys.exit(0)
+           self.reporter.info('Settings:\n' + self.settings.toPrettyString())
+           sys.exit(0)
 
        endPhaseName = self.settings.getValue('XCphaseStop')
        if (endPhaseName):
@@ -129,7 +127,7 @@ class RunnerContext:
 
        # If phase data output, print and quit
        if (self.settings.getValue('XOphases')):
-         self.reporter.info(phaseList.phaseDataToString())
+         self.reporter.info('Phases:\n' + phaseList.phaseDataToString())
          sys.exit(0)
 
        for p in phaseList:
@@ -139,6 +137,8 @@ class RunnerContext:
          if (self.reporter.hasErrors()):
              break 
 
+       #? May be better done by sending print signals
+       #? to the phase, then halting right there?
        # if symbol table output requested
        if (self.settings.getValue('XOexpressionSymbolTable')):
            self._reportPhase('expression symbol table', endPhaseName)
@@ -150,10 +150,12 @@ class RunnerContext:
 
        # if tree output requested
        if (self.settings.getValue('XOtree')):
+           #print('XOtree' + str(self.settings.getValue('XOtree')))
            self._reportPhase('tree', endPhaseName)
-           self.reporter.info(compilationUnit.tree.toPrettyString())
+           self.reporter.info('Tree:\n' + compilationUnit.tree.toPrettyString())
 
-       # otherwise, report errors
+       #! otherwise?
+       # report errors
        if (self.reporter.hasErrors()):
              print('errors...')
              print(self.reporter.summaryString())
@@ -167,23 +169,3 @@ class RunnerContext:
              # How do we write output?
 
 
-
-
-from codeGen.CodeGenContext import X64CodeGenContext
-
-## test
-srcPath = "/home/rob/Desktop/wild/test/test.wild"
-
-from wildio.Source import Source
-from CompilationUnit import *
-from reporters.ConsoleStreamReporter import ConsoleStreamReporter
-
-
-s = Source(srcPath)
-cu = CompilationUnit(s)
-rpt = ConsoleStreamReporter()
-
-ctx = RunnerContext(rpt, X64CodeGenContext())
-#print('phaseData:')
-#print(ctx.phaseDataToString())
-ctx.run(cu)

@@ -9,6 +9,8 @@ from phases.TreeActions import MarkNormalize
 # As Subcomponent
 class MarkNormalizePhase(Phase):
     '''
+    Substitues symbols for marks in normalised alphanumeric form e.g. '+' becomes '$$plus$'
+    Searches for significant symbols such as ! or ?, ten strips them, adding values to the tree.
     '''
     def __init__(self, reporter, settings):
         self.reporter = reporter

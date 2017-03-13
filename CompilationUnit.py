@@ -3,7 +3,9 @@
 
 from trees.Trees import *
 
-# as Global
+import newNames
+
+# as in Global
 
 class CompilationUnit:
     '''
@@ -14,6 +16,11 @@ class CompilationUnit:
       self.source = source
       #self.reporter = reporter
       self.tree = NoTree
+
+      # May seem an odd addittion,
+      # But the temp names are associated 
+      # with a compilation unit
+      self.newNames = newNames.NewName()
 
       # the builder as blocks.
       self.mCode = None
