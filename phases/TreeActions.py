@@ -11,6 +11,7 @@ from enumerations import FuncRenderType
 
     #reporter.error("renderTwig: Unrecognised class name: '{0}'".format(type(tree).__name__))
 
+#? need to intern paths
 class Intern(CallbackTraverser):
     def __init__(self, tree, expSymbolTable, reporter):
       self.expSymbolTable = expSymbolTable
@@ -35,7 +36,7 @@ class Intern(CallbackTraverser):
       try:
         #! need to do path too
         mark = tree.defMark
-        if (mark != NoPathedIdentifier):
+        if (mark.isNotEmpty()):
             self.expSymbolTable.define(tree.defMark.identifier)
       except SymbolTables.DuplicateDefinitionException:
         self.reporter.error('duplicate expression definition in scope of symbol mark: {0}'.format(tree.defMark.identifier), tree.position)
@@ -69,11 +70,10 @@ normalizedSymbols = {
 '.' : '.'
 }
 
-
+#! messy
 class MarkNormalize(CallbackTraverser):
     def __init__(self, tree, reporter):
       self.reporter = reporter
-      #print('intern tree' +  tree.toString())
       CallbackTraverser.__init__(self, tree)
 
     def _isAlphaNumeric(self, c):
@@ -123,103 +123,117 @@ class MarkNormalize(CallbackTraverser):
 
     def definingExpression(self, tree):
       #print('defining expression: ' + tree.defMark.data)
-        tree.defMark.data = self._normalizeMark(tree, tree.defMark.identifier)
+        #tree.defMark.data = self._normalizeMark(tree, tree.defMark.identifier)
+        normalizedMark = self._normalizeMark(tree, tree.defMark.identifier)
+        tree.defMark = tree.defMark.replaceIdentifier(normalizedMark)
 
 
     def expression(self, tree):
       #print('expression: ' + tree.actionMark.data)
-        tree.actionMark.data = self._normalizeMark(tree, tree.actionMark.identifier)
+        #tree.actionMark.data = self._normalizeMark(tree, tree.actionMark.identifier)
+        normalizedMark = self._normalizeMark(tree, tree.actionMark.identifier)
+        tree.actionMark = tree.actionMark.replaceIdentifier(normalizedMark)
+
 
     def definingExpressionWithBody(self, tree):
       #print('defining expression with body: ' + tree.defMark.data)
-        tree.defMark.data = self._normalizeMark(tree, tree.defMark.identifier)
+        #tree.defMark.data = self._normalizeMark(tree, tree.defMark.identifier)
+        normalizedMark = self._normalizeMark(tree, tree.defMark.identifier)
+        tree.defMark = tree.defMark.replaceIdentifier(normalizedMark)
+
 
     def expressionWithBody(self, tree):
         #print('expression with body: ' + tree.actionMark.data)
-        tree.actionMark.data = self._normalizeMark(tree, tree.actionMark.identifier)
+        #tree.actionMark.data = self._normalizeMark(tree, tree.actionMark.identifier)
+        normalizedMark = self._normalizeMark(tree, tree.actionMark.identifier)
+        tree.actionMark = tree.actionMark.replaceIdentifier(normalizedMark)
 
 
 
 
+from trees.Trees import Constant, Mark
 
-##? is this later, as in register setting,
-# or earlier, as in a a source code unnesting?
-# because one uses the name generator, one uses the
-# the architectureContext---
-class FuncUnnest(CallbackTraverser):
+
+class UnaryMinus(CallbackUpdater):
     '''
-    From
-    { func1(func2())}
-    ==
-    {tmp = func2() func1(tmp)}
-    {} = a body (otherwise this extraction creates another parameter!)
+    Crush plus/minus sign expression-wrapped Constant 
+    to Constant with signed numeric content 
     '''
-    def __init__(self, tree, newNames, architectureContext):
+    def __init__(self, tree, reporter):
+      self.reporter = reporter
       #print('intern tree' +  tree.toString())
-      #self.nameGenerator = UnparsedNameGenerator()
-      self.newNames = newNames
-      self.architectureContext = architectureContext
+      CallbackUpdater.__init__(self, tree)
+
+    '''
+    def definingExpression(self, parent, tree):
+      #print('defining expression: ' + tree.defMark.data)
+      if (
+      tree.defMark.data == '$$minus$'
+      tree.defMark.data == '$$plus$' 
+      and len(tree.children) == 1
+      and isinstance(tree.children[0], Constant)
+      ):
+        sign = '-' if (tree.actionMark.data == '$$minus$') else ''
+        tree.children[0].data = sign + tree.children[0].data
+        print('found unary minus def!')
+        parent.update(tree, tree.children[0])
+    '''
+    def expression(self, parent, tree):
+      #print('expression: ' + tree.actionMark.data)
+      if (
+      (tree.actionMark.identifier == '$$minus$' or tree.actionMark.identifier == '$$plus$')
+      and len(tree.children) == 1
+      and isinstance(tree.children[0], Constant)
+      ):
+        sign = '-' if (tree.actionMark.identifier == '$$minus$') else ''
+        tree.children[0].data = sign + tree.children[0].data  
+        #print('found unary minus!')
+        #print(parent.toString())
+        #print(tree.children[0].toString())
+        parent.updateChild(tree, tree.children[0])
+
+mCodeFunctions = [
+    '$$plus$',
+    '$$minus$',
+    '$$mult$',
+    '$$divide$'
+    ]
+
+
+class FunctionCategorize(CallbackTraverser):
+    '''
+    '''
+    def __init__(self, mCodeContext, tree, reporter):
+      self.reporter = reporter
+      self.mCodeContext = mCodeContext
+      #print('intern tree' +  tree.toString())
       CallbackTraverser.__init__(self, tree)
+      
+    '''
+    def definingExpression(self, parent, tree):
+      #print('defining expression: ' + tree.defMark.data)
+      if (
+      tree.defMark.data == '$$minus$'
+      tree.defMark.data == '$$plus$' 
+      and len(tree.children) == 1
+      and isinstance(tree.children[0], Constant)
+      ):
+        sign = '-' if (tree.actionMark.data == '$$minus$') else ''
+        tree.children[0].data = sign + tree.children[0].data
+        print('found unary minus def!')
+        parent.update(tree, tree.children[0])
+    '''
+    def expression(self, tree):
+      #print('expression: ' + tree.actionMark.data)
+      #! should test type too, with 32/64bit...
+      if (
+      (tree.actionMark.identifier in mCodeFunctions)
+      and len(tree.children) == 2
+      ):
+        tree.renderCategory = FuncRenderType.MCODE64
+      #else:
+       # tree.renderCategory = FuncRenderType.CALL
 
-    def _unNest(self, tree):
-       # walk this body
-       #print('unest ' + tree.toString())
-       bodyElems = tree.body
-       # use indexes so we can step about if necessary
-       limit = len(bodyElems)
-       i = 0
-       while (i < limit):
-         e = bodyElems[i]
-         #self.newNames.reset()
-         #? this needs building, so def are not revisited recursively, and funcs can be raised before vals for X64.
-         # is it an Expression/ExpressionWithBody?
-         if (e.isNonAtomicExpression):
-           # look at children (parameters),
-           # for expressions in this expression
-           for idx, subchild in enumerate(e.children):
-             # Constants should be unnested too
-             # everything needs to be, but this for now.
-
-                 
-             # and non-atomic expressions 
-             # if non-expression and known function call
-
-               # TODO: Not elegant here
-               #print('nested func: ' + subchild.actionMark.data)
-               #! probably with prefix etc.
-             newName = self.newNames.get()
-               # replace the expression with a mark
-             e.updateChild(subchild, Mark(newName))
-               # create a definition for the mark
-             newMarkDef = ExpressionWithBody(PathedIdentifier([], 'val')) 
-             #newMarkDef.setDefMark(newName)
-             newMarkDef.defMark = PathedIdentifier([], newName)
-             newMarkDef.appendBody(subchild)
-               # Insert the new definition,
-               # placed before the original function
-             tree.insertBodyChildBefore(e, newMarkDef)
-             if (
-               subchild.isNonAtomicExpression
-               and subchild.renderCategory == FuncRenderType.CALL
-             ):
-               # set the register, it is known
-               newMarkDef.register = self.architectureContext.getCallRegister(idx)
-
-               #print(str(i))
-         #else:
-         i += 1
-    #def definingExpression(self, tree):
-    #  self._unNest(tree)
-
-    #def expression(self, tree):
-    #  print('expression: ' + tree.actionMark.data)
-    #  self._unNest(tree)
-
-    def definingExpressionWithBody(self, tree):
-      self._unNest(tree)
-
-    def expressionWithBody(self, tree):
-      self._unNest(tree)
 
 
 from collections import namedtuple
@@ -376,130 +390,5 @@ class RegisterAllocate():
         self.addString(b)
         b.append(')')
         return ''.join(b) 
-###############################################
-
-LiveRange = namedtuple('LiveRange', 'frm to')
-
-INSTRUCTION_NUMBER = 0
-FROM = 1
-TO = 2
-
-#? Problem:
-#? The difference between expressions for calling functions (unwanted)
-#? and expressions for calling vars (wanted)
-#? Also:
-#? need to mark vars used to supply functions---these may be
-#? pre-allocated (x64) registers
-class ParseLiveRanges(CallbackTraverser):
-    def __init__(self, tree, reporter):
-      self.reporter = reporter
-      #print('intern tree' +  tree.toString())
-      # name -> instruction number,  start, end
-      self.b = {}
-      self.expressionCount = 0
-      CallbackTraverser.__init__(self, tree)
-
-    def result(self):
-        return self.b
-
-    def _append(self, name):
-      '''
-      For definitions
-      '''
-      self.b[name] = [None, self.expressionCount, None]
-
-    def _update(self, nane):
-      '''
-      For appearances/usages to read. 
-      '''
-      self.b [nane][TO] = self.expressionCount
-
-    def _merge(self, name, instructionNumber, idx):
-      if (name in self.b):
-        self.b[name][TO] = idx
-      else:
-        self.b[name] = ['???', idx, 0]
 
 
-    #def comment(self, tree):
-      #print('comment found!')
-      #pass
-
-    #def constant(self, tree):
-      #print('constant: ' + tree.data)
-      #pass
-
-    #def mark(self, tree):
-      #print('mark: ' + tree.data)
-      #pass
-
-    def _nonDefiningExpression(self, tree):
-      if (tree.actionMark.identifier == 'val' or tree.actionMark.identifier == 'var'):
-          self._append(tree.defMark.identifier)
-      else:
-          # if the expression actionmark already defined,
-          # then its a straight val/var
-          #! this is a rubbish test?
-          if (tree.actionMark.identifier in self.b):
-              self._update(tree.actionMark.identifier)
-
-          # function call
-          for param in tree.children:
-              if isinstance(param, Mark):
-                  self._update(param.identifier)
-      self.expressionCount += 1
-
-    def _definingExpression(self, tree):
-      if (tree.actionMark.identifier == 'val' or tree.actionMark.identifier == 'var'):
-          #print('LL?: ' + tree.toString())
-          self._append(tree.defMark.identifier)
-      elif (tree.actionMark == 'func'):
-          # parameter definitions, track them
-          for param in tree.children:
-              self._append(param.identifier)
-      self.expressionCount += 1
-
-    def definingExpression(self, tree):
-      #print('defining expression: ' + tree.defMark.data)
-      self._definingExpression(tree)
-      self.expressionCount += 1
-
-    def expression(self, tree):
-      #print('expression: ' + tree.actionMark.data)
-      self._nonDefiningExpression(tree)
-      self.expressionCount += 1
-
-    def definingExpressionWithBody(self, tree):
-      '''
-      val/var, func definitions
-      '''
-      #print('defining expression with body: ' + tree.defMark.data)
-      self._definingExpression(tree)
-      self.expressionCount += 1           
-            
-
-    def expressionWithBody(self, tree):
-      #print('expression with body: ' + tree.actionMark.data)
-      self._nonDefiningExpression(tree)
-
-    def addString(self, b):
-        first = True
-        for k, v in self.b.items():
-            if first:
-                first = False
-            else:
-                b.append(', "')                
-            b.append(k)
-            b.append('"->[')
-            b.append(str(v[FROM]))
-            b.append(', ')
-            b.append(str(v[TO]))
-            b.append(']')
-        return b
-
-    def toString(self):
-        b = []
-        b.append('LiveRanges(')
-        self.addString(b)
-        b.append(')')
-        return ''.join(b) 

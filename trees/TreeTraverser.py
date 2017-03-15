@@ -47,6 +47,7 @@ class PrintMarks(TreeTraverser):
         if (isinstance(tree, Expression)):
             print(tree.actionMark.data)
 
+#? used where?
 class PruningTraverser(TreeTraverser):
     '''
     Traverse top down, halting traversal on request.
@@ -73,8 +74,8 @@ class PruningTraverser(TreeTraverser):
         if r and t.hasBody:
           self._topdown(t.body)
 
-#TODO: Callack traverser for marks only
-# MAYBE: make tree double-linked 
+#? Callack traverser for marks only
+#? make tree double-linked 
 class CallbackTraverser:
     def __init__(self, tree):
       self._dispatch(tree) 
@@ -112,7 +113,7 @@ class CallbackTraverser:
         elif (isinstance(tree, Mark)):
             self.mark(tree)
         elif (isinstance(tree, ExpressionWithBody)):
-            if (tree.defMark):
+            if (tree.defMark.isNotEmpty()):
                #print('CT func def found! :' + tree.defMark.data)
                self.definingExpressionWithBody(tree)
             else:
@@ -123,7 +124,7 @@ class CallbackTraverser:
             for c in tree.body:
               self._dispatch(c)
         elif (isinstance(tree, Expression)):
-            if(tree.defMark):
+            if(tree.defMark.isNotEmpty()):
                 #print('val def found!' + str(tree.mutable))
                 self.definingExpression(tree)
             else:
@@ -131,6 +132,9 @@ class CallbackTraverser:
             for c in tree.children:
               self._dispatch(c)
 
+
+#? used? Enable!
+#! difficult to use
 class CallbackUpdater:
     def __init__(self, tree):
       self._dispatch(NoTree, tree) 
@@ -171,7 +175,7 @@ class CallbackUpdater:
         elif (isinstance(tree, Mark)):
             self.mark(parent, tree)
         elif (isinstance(tree, ExpressionWithBody)):
-            if (tree.defMark):
+            if (tree.defMark.isNotEmpty()):
                #print('CT func def found! :' + tree.defMark.data)
                self.definingExpressionWithBody(parent, tree)
             else:
@@ -182,10 +186,134 @@ class CallbackUpdater:
             for c in tree.body:
               self._dispatch(tree, c)
         elif (isinstance(tree, Expression)):
-            if(tree.defMark):
+            if(tree.defMark.isNotEmpty()):
                 #print('val def found!' + str(tree.mutable))
                 self.definingExpression(parent, tree)
             else:
                 self.expression(parent, tree)
             for c in tree.children:
               self._dispatch(tree, c)
+
+class CallbackUpdater2:
+    def __init__(self, tree):
+        if (isinstance(tree, ExpressionWithBody)):
+            for c in tree.children:
+              self._dispatch(tree, c)
+            for c in tree.body:
+              self._dispatch(tree, c)
+        elif (isinstance(tree, Expression)):
+            for c in tree.children:
+              self._dispatch(tree, c)
+
+    def comment(self, parent, tree):
+      pass
+
+    def constant(self, parent, tree):
+      pass
+
+    def mark(self, parent, tree):
+      pass
+
+    def definingExpression(self, parent, tree):
+      pass
+
+    def expression(self, parent, tree):
+      pass
+
+    def definingExpressionWithBody(self, parent, tree):
+      pass
+
+    def expressionWithBody(self, parent, tree):
+      pass
+        
+    def _dispatch(self, parent, tree):
+        '''
+        Filters definitions
+        '''
+        #print('dispatching callback traverser')
+        if (isinstance(tree, Comment)):
+            self.comment(parent, tree)
+        elif (isinstance(tree, Constant)):
+            self.constant(parent, tree)
+        elif (isinstance(tree, Mark)):
+            self.mark(parent, tree)
+        elif (isinstance(tree, ExpressionWithBody)):
+            if (tree.defMark.isNotEmpty()):
+               #print('CT func def found! :' + tree.defMark.data)
+               self.definingExpressionWithBody(parent, tree)
+            else:
+               #print('CT ExpBody! :' + tree.actionMark.data)
+               self.expressionWithBody(parent, tree)
+            for c in tree.children:
+              self._dispatch(tree, c)
+            for c in tree.body:
+              self._dispatch(tree, c)
+        elif (isinstance(tree, Expression)):
+            if(tree.defMark.isNotEmpty()):
+                #print('val def found!' + str(tree.mutable))
+                self.definingExpression(parent, tree)
+            else:
+                self.expression(parent, tree)
+            for c in tree.children:
+              self._dispatch(tree, c)
+
+
+class CallbackBodyUpdater:
+    '''
+    Onky dispatches when parent has a body
+    Initial tree must have body to do anything
+    '''
+    def __init__(self, tree):
+        if (isinstance(tree, ExpressionWithBody)):
+            for e in tree.body:
+              self._dispatch(tree, e)
+
+    def comment(self, parent, tree):
+      pass
+
+    def constant(self, parent, tree):
+      pass
+
+    def mark(self, parent, tree):
+      pass
+
+    def definingExpression(self, parent, tree):
+      pass
+
+    def expression(self, parent, tree):
+      pass
+
+    def definingExpressionWithBody(self, parent, tree):
+      pass
+
+    def expressionWithBody(self, parent, tree):
+      pass
+        
+    def _dispatch(self, parent, tree):
+        '''
+        Filters definitions
+        '''
+        #print('dispatching callback traverser')
+        if (isinstance(tree, Comment)):
+            self.comment(parent, tree)
+        elif (isinstance(tree, Constant)):
+            self.constant(parent, tree)
+        elif (isinstance(tree, Mark)):
+            self.mark(parent, tree)
+        elif (isinstance(tree, ExpressionWithBody)):
+            if (tree.defMark.isNotEmpty()):
+               #print('CT func def found! :' + tree.defMark.data)
+               self.definingExpressionWithBody(parent, tree)
+            else:
+               #print('CT ExpBody! :' + tree.actionMark.data)
+               self.expressionWithBody(parent, tree)
+            for c in tree.children:
+              self._dispatch(tree, c)
+            for c in tree.body:
+              self._dispatch(tree, c)
+        elif (isinstance(tree, Expression)):
+            if(tree.defMark.isNotEmpty()):
+                #print('val def found!' + str(tree.mutable))
+                self.definingExpression(parent, tree)
+            else:
+                self.expression(parent, tree)

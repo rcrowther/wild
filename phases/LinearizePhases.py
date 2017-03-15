@@ -3,7 +3,8 @@
 
 from Phase import Phase
 #from reporters import Reporter
-from phases.TreeActions import ParseLiveRanges, RegisterAllocate, FuncUnnest
+from phases.TreeActions import  RegisterAllocate
+from phases.LinearizeActions import FuncUnnest, ParseLiveRanges
 
 class FunctionUnnestPhase(Phase):
     '''
@@ -21,7 +22,7 @@ class FunctionUnnestPhase(Phase):
     def __init__(self, architectureContext):
         self.architectureContext = architectureContext
         Phase.__init__(self,
-            "funcUnnest",
+            "FuncUnnest",
             "Unnest custom functions",
             True
             )
@@ -50,6 +51,5 @@ class ParseLiveRangesPhase(Phase):
     def run(self, compilationUnit):
       tree = compilationUnit.tree
       p = ParseLiveRanges(tree, self.reporter)
-      print(p.toString())
-      ranges = p.result()
+      compilationUnit.liveRanges = p.result()
 

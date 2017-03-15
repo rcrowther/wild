@@ -1,8 +1,9 @@
 
+from orderedDependency.GraphOrderable import GraphOrderable
 
 # As Subcomponent
 # TODO: dependancies?
-class Phase:
+class Phase(GraphOrderable):
     '''
     Acts on a Compilation Unit (containing a tree and source data)
     Usually the action would be a transformaton of the tree, but
@@ -13,8 +14,21 @@ class Phase:
 
     @param isInternal this phase is not a plugin addittion.
     '''
-    def __init__(self, name, description, isInternal):
-        self.name = name
+    def __init__(self,
+        name,
+        description,
+        isInternal,
+        after = None,
+        placeAfterSeq = [],
+        placeBeforeSeq = []
+        ):
+        GraphOrderable.__init__(self, 
+          name, 
+          after, 
+          placeAfterSeq, 
+          placeBeforeSeq
+          )
+        #self.name = name
         self.description = description
         self.isInternal = isInternal
 

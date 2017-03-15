@@ -8,6 +8,7 @@ from Kinds import *
 
 ## This needs sorting out, a lot
 # like, much could be DRY, away from inline/pretty printing. 
+#! deprecated
 class VisitorBuilderBase():
     def __init__(self, tree):
       self.b = []  
@@ -234,7 +235,7 @@ class VisitorBuilder(VisitorBuilderBase):
         self.b.append(tree.data)
         self.b.append(' ')
       #self.b.append(constantTypeToString[self.tpe])
-      print( tree.data + tree.returnKind.toString())
+      #print( tree.data + tree.returnKind.toString())
       self.addReturnKind(tree)
 
       self.b.append(')')
@@ -463,7 +464,7 @@ class TerseVisitorBuilder(VisitorBuilderBase):
 
 
     def addExpressionWithBody(self, tree):
-      self.addMark(str(tree.actionMark))
+      self.addMark(tree.actionMark.addPrettyString())
       self.b.append('(')
       self.addList(tree.children)
       self.addList(tree.body)
@@ -528,7 +529,7 @@ class TersePrettyVisitorBuilder(VisitorBuilderBase):
 
     def addExpressionWithBody(self, tree):
       self.b.append(self.indent)
-      self.b.append(tree.actionMark.data)
+      self.b.append(str(tree.actionMark))
       self.b.append('(\n')
       self.incIndent()
       self.addList(tree.children)
@@ -544,7 +545,8 @@ class TersePrettyVisitorBuilder(VisitorBuilderBase):
 
 
     def addMark(self, tree):
-      self._indent(tree.data)
+      #self._indent(str(tree.data))
+      pass
 
     def addConstant(self, tree):
       if (tree.tpe == trees.STRING_CONSTANT):

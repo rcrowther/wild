@@ -7,6 +7,11 @@ from TokenSyntaxer import TokenSyntaxer
 from phases.TreeActions import Intern
 
 # As Subcomponent
+#! Before or after normalisation? That is the question.
+#! Normalisation changes var names, so likely after.
+#! shame, because it's easier before.
+#? Allow redefinitions? yes... += 
+#! or is that extended definitions? (+= on strings?)
 class InternPhase(Phase):
     '''
     '''
@@ -16,7 +21,7 @@ class InternPhase(Phase):
         self.expSymbolTable = expSymbolTable
 
         Phase.__init__(self,
-            "intern",
+            "Intern",
             "add symbols to the symbol table",
             True
             )

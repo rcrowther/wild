@@ -4,7 +4,7 @@
 from Phase import Phase
 from TokenSyntaxer import TokenSyntaxer
 #from reporters import Reporter
-from phases.TreeActions import MarkNormalize
+from phases.TreeActions import MarkNormalize, UnaryMinus, FunctionCategorize
 
 # As Subcomponent
 class MarkNormalizePhase(Phase):
@@ -17,7 +17,7 @@ class MarkNormalizePhase(Phase):
         self.settings = settings
 
         Phase.__init__(self,
-            "markNormalize",
+            "MarkNormalize",
             "transform mark text to alphanumeric-dollar markup",
             True
             )
@@ -30,37 +30,12 @@ class MarkNormalizePhase(Phase):
 
 
 
-from phases.NASMActions import FunctionCategorize
-
-# Deprecated?
-class FunctionCategorizePhase(Phase):
-    '''
-    '''
-    def __init__(self, mCodeContext, reporter, settings):
-        self.mCodeContext = mCodeContext
-        self.reporter = reporter
-        self.settings = settings
-
-        Phase.__init__(self,
-            "Function Categorize",
-            "decides how the operator in tree node should be rendered",
-            True
-            )
-
-
-    def run(self, compilationUnit):
-      tree = compilationUnit.tree
-      FunctionCategorize(self.mCodeContext, tree, self.reporter)
-
-
-
-from phases.NASMActions import NASMPreprocess, UnaryMinus
 
 # As Subcomponent
 class UnaryMinusPhase(Phase):
     '''
-    Compress plus/minus sign expression-wrapped Constant 
-    ...to Constant with signed numeric content 
+    Crush plus/minus sign expression-wrapped Constant 
+    to Constant with signed numeric content 
     (for consistency, the token syntaxer outputs like this).
     Must go after markNormalise (currently)
     '''
@@ -71,12 +46,40 @@ class UnaryMinusPhase(Phase):
         Phase.__init__(self,
             "UnaryMinus",
             "Replace minus expression with constants with minus constant",
-            True
+            True,
+            placeAfterSeq=['MarkNormalize']
             )
 
 
     def run(self, compilationUnit):
       tree = compilationUnit.tree
       UnaryMinus(tree, self.reporter)
+
+
+
+#from phases.NASMActions import FunctionCategorize
+
+# Deprecated?
+class FunctionCategorizePhase(Phase):
+    '''
+    Since this includes a context, place as late as possible, but before 
+    other machine code phases (which rely on this)
+    '''
+    def __init__(self, mCodeContext, reporter, settings):
+        self.mCodeContext = mCodeContext
+        self.reporter = reporter
+        self.settings = settings
+
+        Phase.__init__(self,
+            "FunctionCategorize",
+            "decides how an operator in a tree node should be rendered",
+            True,
+            placeAfterSeq=['MarkNormalize']
+            )
+
+
+    def run(self, compilationUnit):
+      tree = compilationUnit.tree
+      FunctionCategorize(self.mCodeContext, tree, self.reporter)
 
 

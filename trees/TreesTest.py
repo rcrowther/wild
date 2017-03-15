@@ -39,35 +39,43 @@ class TestTrees(unittest.TestCase):
     python3 -m unittest wildio.IOTest
     '''
     def setUp(self):
-      tb = ExpressionWithBody('main')
-      tb.returnKind = Kind('String')
+      self.tb = ExpressionWithBody('main')
+      self.tb.returnKind = Kind('String')
       tp = Mark('xfoo')
-      tc = Comment('commentary')
-      tsc = Constant('done!', STRING_CONSTANT)
-      t2 = Expression('+')
-      t3 = Constant('3.14', FLOAT_CONSTANT)
-      t4 = Constant('9', INTEGER_CONSTANT)
+      self.tc = Comment('commentary')
+      tsc = StringConstant('done!')
+      self.t2 = Expression('+')
+      self.t3 = FloatConstant('3.14', FLOAT_CONSTANT)
+      t4 = IntegerConstant('9', INTEGER_CONSTANT)
       
       #t5 = Expression('annotation')
-      tb.appendChild(tp)
-      tb.appendBody(tc)
-      t2.appendChild(t3)
-      t2.appendChild(t4)
-      tb.appendBody(t2)
-      tb.appendBody(tsc)
+      self.tb.appendChild(tp)
+      self.tb.appendBody(self.tc)
+      self.t2.appendChild(self.t3)
+      self.t2.appendChild(t4)
+      self.tb.appendBody(self.t2)
+      self.tb.appendBody(tsc)
 
-      self.testTree = tb
+      self.testTree = self.tb
 
     def test_tree(self):
       '''
       python3 -m unittest trees.TreesTest.TestTrees.test_tree
       '''
-      print(self.testTree.toString())
+      print(str(self.tc))
+      print(str(self.t3))
+      print(str(self.t2))
+      print(str(self.tb))
+      print(str(self.testTree))
 
     def test_tree_pretty(self):
       '''
       python3 -m unittest trees.TreesTest.TestTrees.test_tree
       '''
+      print(self.tc.toPrettyString())
+      print(self.t3.toPrettyString())
+      print(self.t2.toPrettyString())
+      print(self.tb.toPrettyString())
       print(self.testTree.toPrettyString())
 
     def test_print_marks(self):

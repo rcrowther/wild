@@ -52,6 +52,12 @@ class PhaseList():
              i += 1
         return i if broke else -1
 
+    def contains(self, phaseName):
+        for p in self.phases:
+          if (p.name == phaseName):
+            return True
+        return False
+
     def take(self, phaseName):
         xl = []
         for p in self.phases:
@@ -118,12 +124,15 @@ class RunnerContext:
            self.reporter.info('Settings:\n' + self.settings.toPrettyString())
            sys.exit(0)
 
-       endPhaseName = self.settings.getValue('XCphaseStop')
+       endPhaseName = self.settings.getValue('XCtoPhase')
+       phaseList = self.phases
        if (endPhaseName):
           # limit phase list
-          phaseList = self.phases.take(endPhaseName) 
-       else:
-          phaseList = self.phases
+          if(not self.phases.contains(endPhaseName)):
+              self.reporter.warning("Phase name not in list:phase name: '{0}'\nIgnoring XCtoPhase limit".format(endPhaseName))
+          else:
+              phaseList = self.phases.take(endPhaseName)
+
 
        # If phase data output, print and quit
        if (self.settings.getValue('XOphases')):
@@ -142,17 +151,22 @@ class RunnerContext:
        # if symbol table output requested
        if (self.settings.getValue('XOexpressionSymbolTable')):
            self._reportPhase('expression symbol table', endPhaseName)
-           self.reporter.info(self.expSymbolTable.toString())
+           self.reporter.info('Table:\n' + self.expSymbolTable.toPrettyString())
 
        if (self.settings.getValue('XOkindSymbolTable')):
            self._reportPhase('kind symbol table', endPhaseName)
-           self.reporter.info(self.kindSymbolTable.toString())
+           self.reporter.info('Table:\n' + self.kindSymbolTable.toPrettyString())
 
        # if tree output requested
        if (self.settings.getValue('XOtree')):
            #print('XOtree' + str(self.settings.getValue('XOtree')))
            self._reportPhase('tree', endPhaseName)
            self.reporter.info('Tree:\n' + compilationUnit.tree.toPrettyString())
+
+       if (self.settings.getValue('XOliveRanges')):
+           #print('XOtree' + str(self.settings.getValue('XOtree')))
+           self._reportPhase('tree', endPhaseName)
+           self.reporter.info('Live Ranges:\n' + str(compilationUnit.liveRanges))
 
        #! otherwise?
        # report errors

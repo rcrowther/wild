@@ -9,70 +9,21 @@ import graphviz.builder
 # See SubComponent
 # Transform blends a tree transformer with a subcomponent, as do other
 # classes like SyntaxAnalyzer
+
 #! add reporter
-#! cant be 
 #a http://www.scala-lang.org/old/sid/2
-class OrderedDependency():
+
+from util.codeUtils import StdPrint 
     
-    def eq(self, that):
-       pass
-    
-    def isFirst(self, that):
-       pass
-    
-    def isLast(self, that):
-       pass
-    
-    def isBefore(self, xs):
-       pass
-    
-    def isAfter(self, xs):
-       pass
-    
-    def before(self, that):
-       '''
-       Immediate edges, not the whole tree
-       '''
-       pass
-    
-    def after(self, that):
-       '''
-       Immediate edges, not the whole tree
-       '''
-       pass
-    
-    def requireBefore(self, xs):
-       '''
-       Must appear somewhere before
-       '''
-       pass
-    
-    def requireAfter(self, xs):
-       '''
-       Must appear somewhere after
-       '''
-       pass
-    
-    def placeBefore(self, xs):
-       '''
-       Place before, if appears
-       '''
-       pass
-    
-    def placeAfter(self, xs):
-       '''
-       Place after, if appears
-       '''
-       pass
-    
-class BasicGraphOrderable():
+class GraphOrderable(StdPrint):
     '''
     @param after place immediately after this element name. Overrides
      other placement info. Can be None.
-    @param placeAfterSeq place after these element names
-    @param placeBeforeSeq place before these element names
+    @param placeAfterSeq place after element names in this array
+    @param placeBeforeSeq place before element names in this array
     '''
     def __init__(self, name, after, placeAfterSeq, placeBeforeSeq):
+        StdPrint.__init__(self, 'GraphOrderable')
         self.name = name    
         #runsRightAfter
         self.after = after
@@ -80,6 +31,27 @@ class BasicGraphOrderable():
         self.placeAfter = placeAfterSeq
         #runsBefore
         self.placeBefore = placeBeforeSeq
+
+    def addSeqString(self, b, seq):
+       first = True
+       for e in seq:
+          if (first):
+            first = False
+          else:
+            b.append(', ')
+          b.append(e)
+       return b
+
+    def addString(self, b):
+       b.append('name:')
+       b.append(self.name)
+       b.append(', after:')
+       b.append(str(self.after))
+       b.append(', placeAfter:')
+       self._addSeqString(b, self.placeAfter)
+       b.append(', placeBefore:')
+       self._addSeqString(b, self.placeBefore)
+       return b
 
 
 

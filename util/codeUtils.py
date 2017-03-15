@@ -14,10 +14,25 @@ class StdPrint():
     def __init__(self, entitySuffix):
         self.entitySuffix = entitySuffix
 
+    def _addSeqString(self, b, seq):
+       '''
+       Helper to add sequences
+       '''
+       first = True
+       for e in seq:
+          if (first):
+            first = False
+          else:
+            b.append(',')
+          b.append(e)
+       return b
 
     def addString(self, b):
        b.append('addString undefined!')
        return b
+
+
+
 
     def __str__(self):
       '''
@@ -54,9 +69,17 @@ class StdSeqPrint(StdPrint):
        return b
 
     def addString(self, b):
-       return self.addStringWithSeparator(b, ', ')
+       return self.addStringWithSeparator(b, ',')
 
-
-
+    '''
+    # See 'Trees' for a potential toPrettySting implementation
+    def toPrettyString(self):
+      b = []
+      b.append(self.entitySuffix)
+      b.append('(')
+      self.addPrettyString(b)
+      b.append(')')
+      return "".join(b)
+   '''
 
 

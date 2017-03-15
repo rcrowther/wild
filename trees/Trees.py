@@ -11,26 +11,57 @@ from enumerations import FuncRenderType
 
 from collections import namedtuple
 
-from util.codeUtils import StdPrint 
+from util.codeUtils import StdPrint, StdSeqPrint
 
 #PathedIdentifier = namedtuple('SymbolData', 'path identifier')
 
 class PathedIdentifier(namedtuple('SymbolData', 'path identifier')):
         '''
-        path list of identifiers
+        path string
+        identifier string
         '''
-        #@property
-        #def hypot(self):
-        #    return (self.x ** 2 + self.y ** 2) ** 0.5
-        def __str__(self):
-            #return 'PathedIdentifier(path -> {0}, identifier -> {1})'.format(self.path, self.identifier)
-            b = ['PathedIdentifier(']
+       #? could be (mark != NoPathedIdentifier)?
+        def isEmpty(self):
+            return self.identifier == ''
+
+       #? could be (mark != NoPathedIdentifier)?
+        def isNotEmpty(self):
+            return self.identifier != ''
+
+        #? Provide in  tree. Used a lot.
+        def replaceIdentifier(self, newIdentifier):
+            '''
+            Must be used immutable, as an assignment
+            tree.defMark = tree.defMark.replaceIdentifier(xxx)
+            '''
+            return self._replace(identifier = newIdentifier)
+
+        def addPrettyString(self, b):
+           for e in self.path:
+             b.append(e)
+             b.append('.')
+           b.append(self.identifier)
+           return b
+
+        def addString(self, b):
             if (self.path):
                 b.append(str(self.path))
                 b.append(', ')
             b.append(self.identifier)
+            return b
+
+        def toPrettyString(self):
+            b = []
+            self.addPrettyString(b)
+            return ''.join(b)
+
+        '''
+        path list of identifiers
+        '''
+        def __str__(self):
+            b = ['PathedIdentifier(']
+            self.addString(b)
             b.append(')')
-            #return 'PathedIdentifier(path -> {0}, identifier -> {1})'.format(self.path, self.identifier)
             return ''.join(b)
 
 NoPathedIdentifier = PathedIdentifier([], '')
@@ -42,14 +73,14 @@ NoPathedIdentifier = PathedIdentifier([], '')
 # Tidy up _toFrameString
 # We do need to keep positions in the tree, because of compiler phases,
 # Which otherwise do not know position of error.
-class Tree(StdPrint):
+class Tree(StdSeqPrint):
     '''
     Base tree. 
     Tree enables constant iteration, so includes every syntax rule.
     The base class does very little and is never instatiated.
     '''
     def __init__(self, position = Position.NoPosition):
-        StdPrint.__init__(self, 'Tree')
+        StdSeqPrint.__init__(self, 'Tree')
         # if constant
         # if expression
         # if data
@@ -125,14 +156,42 @@ class Tree(StdPrint):
     #   '''
     #return False
 
+    def _addIndentedValue(self, b, indent, v):
+       b.append(indent)
+       b.append(v)
+ 
+    def addPrettyString(self, b, indent):
+       self._addIndentedValue(b, indent, str(self.renderCategory))
+       b.append('\n')
+       self._addIndentedValue(b, indent, str(self.register))
+       return b
+    '''
     def toPrettyString(self):
       b = TaggedPrettyVisitorBuilder(self, True)
       #b = TersePrettyVisitorBuilder(self)
       return "".join(b.result())
-
-
-    def addString(self, b):
+    '''
+    def addPrettyStringWrap(self, b, indent):
+      self._addIndentedValue(b, indent, self.entitySuffix)
+      b.append('(\n')
+      self.addPrettyString(b, indent + '  ')
+      b.append('\n')
+      self._addIndentedValue(b, indent, ')')
+      return b
+    
+    def toPrettyString(self):
+      b = []
+      self.addPrettyStringWrap(b, '')
+      return "".join(b)
+    
+    def addStringWithSeparator(self, b, sep):
+       #b.append('renderCategory: ')
+       b.append(str(self.renderCategory))
+       b.append(sep)
+       #b.append('register: ')
+       b.append(str(self.register))
        return b
+
 
 
 
@@ -144,13 +203,22 @@ class Comment(Tree):
     Mostly, a literal (also comments).
     Has no children, returnKind, parameters, genericParameters...
     '''
-    def __init__(self, data, position):
-        StdPrint.__init__(self, 'Comment')
-        self.data = data
+    def __init__(self, data, position = Position.NoPosition):
         Tree.__init__(self, position)
+        StdSeqPrint.__init__(self, 'Comment')
+        self.data = data
 
 
-    def addString(self, b):
+    def _truncString(self):
+        return self.data[0:8] + '...' if (len(self.data) > 8) else self.data
+
+
+
+    def addPrettyString(self, b, indent):
+       self._addIndentedValue(b, indent, self._truncString())
+       return b
+
+    def addStringWithSeparator(self, b, sep):
        if (len(self.data) > 8):
          b.append(self.data[0:8])
          b.append('...')
@@ -169,8 +237,8 @@ class ExpressionBase(Tree):
     Never activated.
     '''
     def __init__(self, position = Position.NoPosition):
-        StdPrint.__init__(self, 'ExpressionBase')
         Tree.__init__(self, position)
+        StdSeqPrint.__init__(self, 'ExpressionBase')
         self.returnKind = UnknownKind
         # Big question over how to handle defines
         # Several models possible e.g. LISP,
@@ -185,8 +253,13 @@ class ExpressionBase(Tree):
         # Expression(actionMark: 'val,  defMark: 'x, (42))
         # fnc x(a b)()
         # ExpressionWithBody(actionMark: 'fnc,  defMark: 'x, (a b) ())
-        self.defMark = None
+        #self.defMark = None
         self.defMark = NoPathedIdentifier
+        #? The below is not necessary, may become supplemental nodes?
+        '''
+        Tests if this definition was inserted by the compiler
+        '''
+        self.isDefinitionFromCompiler = False
 
     # Needs testing for compatibility if called more than once?
     # What if we know a kind name but not type?
@@ -195,13 +268,26 @@ class ExpressionBase(Tree):
         self.returnKind = k
         return k
 
+    def addPrettyString(self, b, indent):
+       if (self.defMark.isNotEmpty()):
+           self._addIndentedValue(b, indent, self.defMark.toPrettyString())
+           #self._addIndentedValue(b, indent, str(self.defMark))
+           b.append('\n')
+       self._addIndentedValue(b, indent, self.returnKind.toString())
+       b.append('\n')
+       Tree.addPrettyString(self, b, indent)
+       return b
 
-    def addString(self, b):
+    def addStringWithSeparator(self, b, sep):
+    #def addString(self, b):
        #if (self.defMark !=  No  ):
-       b.append('defmark: ')
+       #b.append('defmark: ')
        b.append(str(self.defMark))
-       b.append(', returnKind: ')
+       b.append(sep)
+       #b.append('returnKind: ')
        self.returnKind.addString(b)
+       b.append(sep)
+       Tree.addStringWithSeparator(self, b, sep)
        return b
 
 #class ExpressionBase(Tree):
@@ -247,7 +333,9 @@ constantTypeToString = {
 ## Should differentiate between strings/numbers...
 # and default numbers...
 # Would be smaller if store numbers as numbers, not strings?
-class Constant(ExpressionBase):
+#! constant is not an expression? end of story? but returns a kind?
+class Constant(Tree):
+#class Constant(ExpressionBase):
     '''
     Literals.
     Strings, numbers. Also symbols?
@@ -257,17 +345,36 @@ class Constant(ExpressionBase):
     @tpe general type of Constant i.e. Enum
     '''
     def __init__(self, position, data, tpe):
-        StdPrint.__init__(self, 'Constant')
         ExpressionBase.__init__(self, position)
+        StdSeqPrint.__init__(self, 'Constant')
         self.data = data
         self.tpe = tpe
         self.returnKind = Any
 
-    def addString(self, b):
-       ExpressionBase.addString(self, b)
-       b.append('tpe: ')
+    # Needs testing for compatibility if called more than once?
+    # What if we know a kind name but not type?
+    def setReturnKind(self, name):
+        k = Kind(name)
+        self.returnKind = k
+        return k
+
+    def addPrettyString(self, b, indent):
+       #Tree.addPrettyString(self, b, indent)
+       #b.append('\n')
+       #b.append('returnKind: ')
+       self._addIndentedValue(b, indent, constantTypeToString[self.tpe])
+       b.append('\n')
+       self._addIndentedValue(b, indent, self.data)
+       return b
+
+    def addStringWithSeparator(self, b, sep):
+    #def addString(self, b):
+       ExpressionBase.addStringWithSeparator(self, b, sep)
+       b.append(sep)
+       #b.append('tpe: ')
        b.append(constantTypeToString[self.tpe])
-       b.append(', data: ')
+       b.append(sep)
+       #b.append('data: ')
        b.append(self.data)
        return b
 
@@ -296,15 +403,17 @@ class Mark(ExpressionBase):
     Has data/name. Inherits returnKind
     '''
     def __init__(self, data):
-        StdPrint.__init__(self, 'Mark')
         ExpressionBase.__init__(self, Position.NoPosition)
+        #StdPrint.__init__(self, 'Mark')
+        StdSeqPrint.__init__(self, 'Mark')
         self.data = data
         self.returnKind = Any
 
-
-    def addString(self, b):
-       ExpressionBase.addString(self, b)
-       b.append(', data: ')
+    def addStringWithSeparator(self, b, sep):
+    #def addString(self, b):
+       ExpressionBase.addStringWithSeparator(self, b, sep)
+       b.append(sep)
+       #b.append('data: ')
        b.append(self.data)
        return b
 
@@ -318,8 +427,9 @@ class Expression(ExpressionBase):
     actionMark a pathedIdentifier
     '''
     def __init__(self, actionMark, position = Position.NoPosition):
-        StdPrint.__init__(self, 'Expression')
         ExpressionBase.__init__(self, position)
+        #StdPrint.__init__(self, 'Expression')
+        StdSeqPrint.__init__(self, 'Expression')
         # if constant
         # if expression
         # if data
@@ -380,15 +490,43 @@ class Expression(ExpressionBase):
     def updateChild(self, fromObj, newObj):
         self.children = [newObj if e==fromObj else e for e in self.children]
 
+    def addPrettyString(self, b, indent):
+       #print(str(self.actionMark))
+       self._addIndentedValue(b, indent, self.actionMark.toPrettyString())
+       #self._addIndentedValue(b, indent, str(self.actionMark))
+       b.append('\n')
+       #b.append('returnKind: ')
+       ExpressionBase.addPrettyString(self, b, indent)
+       b.append('\n')
+       self._addIndentedValue(b, indent, 'children:\n')
+       newIndent = indent + '  '
+       first = True
+       for c in self.children:
+         if (first):
+             first = False
+         else:
+             b.append('\n')
+         c.addPrettyStringWrap(b, newIndent)
+       return b
 
-
-    def addString(self, b):
-       ExpressionBase.addString(self, b)
-       b.append(', actionMark: ')
+    def addStringWithSeparator(self, b, sep):
+    #def addString(self, b):
+       #b.append(', actionMark: ')
        #b.append(self.actionMark.data)
        b.append(str(self.actionMark))
-       b.append(', childCount: ')
-       b.append(str(len(self.children)))
+       #b.append(', childCount: ')
+       #b.append(str(len(self.children)))
+       b.append(sep)
+       ExpressionBase.addStringWithSeparator(self, b, sep)
+       b.append(sep)
+       b.append('children: ')
+       first = True
+       for c in self.children:
+         if (first):
+             first = False
+         else:
+             b.append(sep)
+         b.append(str(c))
        return b
 
 
@@ -401,10 +539,12 @@ class ExpressionWithBody(Expression):
     defMark a pathedIdentifier
     '''
     def __init__(self, actionMark, position = Position.NoPosition):
-        StdPrint.__init__(self, 'ExpressionWithBody')
+        Expression.__init__(self, actionMark, position)
+        #StdPrint.__init__(self, 'ExpressionWithBody')
+        StdSeqPrint.__init__(self, 'ExpressionWithBody')
         self.body = []
         self.hasBody = True
-        Expression.__init__(self, actionMark, position)
+
 
 
     def setBody(self, actionMark):
@@ -432,10 +572,35 @@ class ExpressionWithBody(Expression):
         idx = self.body.index(seekObj)
         self.body.insert(idx, newObj)
 
+    def addPrettyString(self, b, indent):
+       Expression.addPrettyString(self, b, indent)
+       b.append('\n')
+       self._addIndentedValue(b, indent, 'body:\n')
+       newIndent = indent + '  '
+       first = True
+       for c in self.body:
+         if (first):
+             first = False
+         else:
+             b.append('\n')
+         c.addPrettyStringWrap(b, newIndent)
+       return b
 
-    def addString(self, b):
-       Expression.addString(self, b)
-       b.append(', bodyCount: ')
-       b.append(str(len(self.body)))
+    def addStringWithSeparator(self, b, sep):
+    #def addString(self, b):
+       #b.append(sep)
+       #b.append('bodyCount: ')
+       #b.append(str(len(self.body)))
+       Expression.addStringWithSeparator(self, b, sep)
+       b.append(sep)
+       b.append('body: ')
+       first = True
+       for c in self.body:
+         if (first):
+             first = False
+         else:
+             b.append(sep)
+         #c.addStringWithSeparator(b, sep)
+         b.append(str(c))
        return b
 

@@ -22,6 +22,7 @@ class CompilationUnit:
       # with a compilation unit
       self.newNames = newNames.NewName()
 
+      self.liveRanges = None
       # the builder as blocks.
       self.mCode = None
       # status report calls?

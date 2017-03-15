@@ -1,6 +1,16 @@
 #!/usr/bin/python3
 
+#! move to enumerations?
 STACK = 'stack'
+'''
+ A register is a return register---where we need this
+ value to arrive. In the case of params, for example,
+ the parameter mark appears in the AST tree, but there
+ is no need for analysis for machine code. register/stack
+ application places the params.
+ This mark identifies AST expressions known to have no linearised expression.  
+'''
+ABSTRACT = 'abstract'
 
 class ArchitectureContext():
     '''

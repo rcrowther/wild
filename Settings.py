@@ -52,8 +52,8 @@ class Settings(StdSeqPrint):
 
     def compilerSettings(self):
        return {
-       'XCphaseStop': Setting('stop at named phase', None),
-       #'XCphaseStop': Setting('stop at named phase', 'parser'),
+       'XCtoPhase': Setting('stop at (including) named phase', None),
+       #'XCtoPhase': Setting('stop at named phase', 'parser'),
        'XCparametersStacking': Setting('warn that parameters will be stacked (if alternatives exist)', True)
        }
 
@@ -62,13 +62,15 @@ class Settings(StdSeqPrint):
     # or all can be done anyhow?
     def alternateOutputSettings(self):
        return {
+       'XOtokens': Setting('report the initial tokens', False),
        'XOphases': Setting('report phase data', False),
        'XOsettings': Setting('report settings data', False),
        'XOtree': Setting('report the last tree', False),
        #'XOtree': Setting('report the tree', False),
-       'XOtokens': Setting('report the initial tokens', False),
+
        'XOexpressionSymbolTable': Setting('report the expression symbol table', False),
-       'XOkindSymbolTable': Setting('report the kind symbol table', False)
+       'XOkindSymbolTable': Setting('report the kind symbol table', False),
+       'XOliveRanges': Setting('report the live range data', False)
        }
 
     def stockSettings(self):

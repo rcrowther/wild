@@ -1,6 +1,8 @@
 
 from Kinds import Kind, Any, IntegerKind, StringKind
 
+from util.codeUtils import StdSeqPrint 
+
 #from collections import namedtuple
 
 #SymbolData = namedtuple('SymbolData', 'isDefined dataRef')
@@ -15,16 +17,17 @@ def newData(isDefined, refData = None):
 
 # where to hold pos?
 # and scope? Here, I think...
-class SymbolTable():
+class SymbolTable(StdSeqPrint):
     '''
-    @param preset dict of key, refData. clear() restores to these.
+    @param preset dict of key -> refData. clear() restores to these.
     '''
     def __init__(self, presetAttrs = {}):
-      self.underlying = {}
-      self.presets = {}
-      for k, v in presetAttrs.items():
-        self.presets[k] = newData(True, v)
-      self.clear()
+        StdSeqPrint.__init__(self, 'SymbolTable')
+        self.underlying = {}
+        self.presets = {}
+        for k, v in presetAttrs.items():
+          self.presets[k] = newData(True, v)
+        self.clear()
 
     def define(self, k): 
       '''
@@ -62,40 +65,35 @@ class SymbolTable():
     def exists(self, k):
       return k in self.underlying
 
-    #def dataAddString(self, b, data):
-    #   b.append(str(data['isDefined']))
-    #   return b
+    def toPrettyString(self):
+       return ''.join(self.addStringWithSeparator([], '\n'))
 
-    def toString(self):
-       b = []
+    def addStringWithSeparator(self, b, sep):
        first = True
-       b.append('{')
-       for k, v in self.underlying.items():
+       for k, v in  self.underlying.items():
           if (first):
             first = False
           else:
-            b.append(', ')
-          b.append(str(k))
+            b.append(sep)
+          b.append(k)
           b.append(' -> ')
           b.append(str(v))
-
-       b.append('}')
-       return ''.join(b)
+       return b
 
 # These work anywhere
-keyKinds = [
+predefinedKinds = [
 Any,
 IntegerKind,
 StringKind
 ]
-kindSymbolTable = SymbolTable({e.name : e for e in keyKinds})
+kindSymbolTable = SymbolTable({e.name : e for e in predefinedKinds})
 
-keyExpressionActions = [
-'+',
-'-',
-'*',
-'%'
+predefinedExpressions = [
+'$$plus$',
+'$$minus$',
+'$$mult$',
+'$$divide$'
 ]
-expressionActionSymbolTable = SymbolTable({e : None for e in keyExpressionActions})
+expressionActionSymbolTable = SymbolTable({e : None for e in predefinedExpressions})
 
 
