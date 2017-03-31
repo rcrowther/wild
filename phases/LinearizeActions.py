@@ -5,7 +5,8 @@ from collections import namedtuple
 from trees.TreeTraverser import CallbackTraverser, CallbackBodyBuilder
 from trees.Trees import Constant, Mark, Expression, ExpressionWithBody, PathedIdentifier
 
-from enumerations import FuncRenderType, MachineRenderKind
+#from enumerations import FuncRenderType, MachineRenderKind
+from enumerations import MachineRenderKind
 from codeGen.architectureContext import ABSTRACT
 from util.codeUtils import StdPrint
 
@@ -122,6 +123,7 @@ class FuncUnnest():
     node -> machine code correspondence. For example, the returns from function calls must be allocated to variables. This may need an allocation inserting.
     However, this is a big step forward.
     '''
+    '''
     def __init__(self, tree, newNames, architectureContext):
       print('unnest!!!')
       assert(isinstance(tree, ExpressionWithBody))              
@@ -151,8 +153,9 @@ class FuncUnnest():
          print('la: ' + tree.actionMark.identifier)
        if (
          tree.isNonAtomicExpression
-         and tree.renderCategory == FuncRenderType.CALL
-         #? just a defense, for now
+         #and tree.renderCategory == FuncRenderType.CALL
+         and tree.isFunc
+         #? a defense, for now
          and (not tree.isDefinitionFromCompiler)
        ):
          tree.isDefinitionFromCompiler = True 
@@ -170,10 +173,10 @@ class FuncUnnest():
        return supply
 
     def _unNestBody(self, tree):
-       '''
+       ##
        Must be provided with an expression
        tree a tree with a body
-       '''
+       #
        assert(
        isinstance(tree, Expression)
        or isinstance(tree, ExpressionWithBody)
@@ -230,7 +233,7 @@ class FuncUnnest():
          b.append(e)
        # put the new body in place
        tree.body = b
-
+    '''
 ###########################################################
 
 #CallbackBodyBuilder
@@ -402,8 +405,9 @@ class FuncUnnest2(CallbackBodyBuilder):
         child = exp.children[1]
         #! if child is not machine
         if(
-          child.renderCategory == FuncRenderType.CALL
-          and child.actionMark.isFunc 
+          #child.renderCategory == FuncRenderType.CALL
+          #and child.actionMark.isFunc 
+          child.isFunc 
         ):
           newName = self.newNames.get()
           child = exp.children[1]
@@ -426,13 +430,14 @@ class FuncUnnest2(CallbackBodyBuilder):
         and not exp.isDef
       ):
         print('dispatch: ' + exp.actionMark.identifier)
-        if (exp.renderCategory == FuncRenderType.CALL):
-          self._unnestCodeCallParams(b, exp)
-        elif (
-          exp.renderCategory == FuncRenderType.MCODE64 
-          or exp.renderCategory == FuncRenderType.MCODE32
+        if (
+        #exp.renderCategory == FuncRenderType.CALL
+        exp.isFunc
         ):
-          self._unnestMachineCallParams(b, exp)
+          if(not exp.isMachine):
+            self._unnestCodeCallParams(b, exp)
+          else:
+            self._unnestMachineCallParams(b, exp)
 
 
 
@@ -891,7 +896,7 @@ class TreeToSplicecode():
     # partial constant application
     def _constant(self, tree):
       #print('constant: ' + tree.data)
-        if (tree.tpe == STRING_CONSTANT):
+        if (tree.tpe == ConstantKind.string):
             self.b.append('"')
             self.b.append(tree.data)
             self.b.append('"')
@@ -965,7 +970,8 @@ class TreeToSplicecode():
               #self.b.append('..some target')
               self.b.append(tree.defMark.identifier)
               self._newLine()
-      elif(tree.renderCategory != FuncRenderType.CALL):
+      #elif(tree.renderCategory != FuncRenderType.CALL):
+      elif(tree.isData and tree.isMachine):
           # machine data call
           opId = tree.actionMark.identifier
           machineOp = self.machineOps.get(opId)

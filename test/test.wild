@@ -5,7 +5,7 @@ package wildTest (
 
 # data def
 #??? please render!
-val zee! -3.142
+#val zee! -3.142
 
 # machine data call
 #42
@@ -17,7 +17,7 @@ val zee! -3.142
 #fnc funcBe! (aby!: int beeby! : int)()
 
 # machine func call
-#+(zee 9)
++(zee 9)
 
 # code func call
 #print(zee 15)

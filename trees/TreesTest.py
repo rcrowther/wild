@@ -45,8 +45,8 @@ class TestTrees(unittest.TestCase):
       self.tc = Comment('commentary')
       tsc = StringConstant('done!')
       self.t2 = Expression('+')
-      self.t3 = FloatConstant('3.14', FLOAT_CONSTANT)
-      t4 = IntegerConstant('9', INTEGER_CONSTANT)
+      self.t3 = FloatConstant('3.14',)
+      t4 = IntegerConstant('9')
       
       #t5 = Expression('annotation')
       self.tb.appendChild(tp)

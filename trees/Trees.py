@@ -7,7 +7,7 @@ from Kinds import UnknownKind, Any, Kind, IntegerKind, FloatKind, StringKind
 import trees.Flags
 import Position
 
-from enumerations import FuncRenderType, MachineRenderKind
+from enumerations import ConstantKind, MachineRenderKind
 from collections import namedtuple
 from util.codeUtils import StdPrint, StdSeqPrint
 
@@ -130,7 +130,7 @@ class Tree(StdSeqPrint):
         This field allows analysis tools to note decisions.
         The field defaults to saying this expression is not a function.
         '''
-        self.renderCategory = FuncRenderType.NOT_FUNC
+        #self.renderCategory = FuncRenderType.NOT_FUNC
         # Next few are used for rendering.
         # They make an interface to information scattered
         # between architecture, type, and initial parsing 
@@ -148,14 +148,24 @@ class Tree(StdSeqPrint):
         self.register = None
         self.returnKind = UnknownKind
 
+    def treeTypeToString(self):
+       if (self.isConstant):
+         return 'isConstant'
+       elif(self.isData):
+         return 'isData'
+       elif(self.isFunc):
+         return 'isFunc'
+       else:
+         return '!tree type'
+
     def _addIndentedValue(self, b, indent, v):
        b.append(indent)
        b.append(v)
  
     def addPrettyString(self, b, indent):
-       self._addIndentedValue(b, indent, str(self.renderCategory))
+       self._addIndentedValue(b, indent, self.treeTypeToString())
        b.append('\n')
-       self._addIndentedValue(b, indent, 'machine' if self.isMachine else '!Machine')
+       self._addIndentedValue(b, indent, 'isMachine' if self.isMachine else '!Machine')
        b.append('\n')
        self._addIndentedValue(b, indent, str(self.machineKind))
        b.append('\n')
@@ -215,29 +225,13 @@ class Comment(Tree):
 
 
 
-#! messy, refactor as Enum
 
-INTEGER_CONSTANT = 1
-FLOAT_CONSTANT = 2
-# No!
-#CODEPOINT_CONSTANT = 3
-STRING_CONSTANT = 3
 
-# Maintain some basic category of constant kinds using
-# this enum
-# Reason this is useful, when we carry returnKinds, is where we need the basic category,
+# Maintain some basic category of constant kinds via an enum
+# Reason this is useful, despite returnKinds, is where we need the basic category,
 # For example, print strings with quote marks round them.
-constantTypeToString = {
-1: 'INTEGER_CONSTANT',
-2 : 'FLOAT_CONSTANT',
-3: 'STRING_CONSTANT'
-}
 
-# besides convenience, what for?
-# How do lisp compilers handle?
-## Should differentiate between strings/numbers...
-# and default numbers...
-# Would be smaller if store numbers as numbers, not strings?
+#? Would be smaller if store numbers as numbers, not strings?
 #! constant is not an expression? end of story? but returns a kind?
 class Constant(Tree):
 #class Constant(ExpressionBase):
@@ -271,7 +265,8 @@ class Constant(Tree):
        #Tree.addPrettyString(self, b, indent)
        #b.append('\n')
        #b.append('returnKind: ')
-       self._addIndentedValue(b, indent, constantTypeToString[self.tpe])
+       #self._addIndentedValue(b, indent, constantTypeToString[self.tpe])
+       self._addIndentedValue(b, indent, str(self.tpe))
        b.append('\n')
        self._addIndentedValue(b, indent, self.data)
        return b
@@ -281,25 +276,26 @@ class Constant(Tree):
        ExpressionBase.addStringWithSeparator(self, b, sep)
        b.append(sep)
        #b.append('tpe: ')
-       b.append(constantTypeToString[self.tpe])
+       #b.append(constantTypeToString[self.tpe])
+       b.append(str(self.tpe))
        b.append(sep)
        #b.append('data: ')
        b.append(self.data)
        return b
 
 def IntegerConstant(data, position = Position.NoPosition):
-  t = Constant(position, data, INTEGER_CONSTANT)
+  t = Constant(position, data, ConstantKind.integerNum)
   #print('add int' + IntegerKind.toString())
   t.returnKind = IntegerKind
   return t
 
 def FloatConstant(data, position = Position.NoPosition):
-  t = Constant(position, data, FLOAT_CONSTANT)
+  t = Constant(position, data, ConstantKind.floatNum)
   t.returnKind = FloatKind
   return t
 
 def StringConstant(data, position = Position.NoPosition):
-  t = Constant(position, data, STRING_CONSTANT)
+  t = Constant(position, data, ConstantKind.string)
   t.returnKind = StringKind
   return t
 
@@ -428,7 +424,7 @@ class Expression(ExpressionBase):
         self.hasParams = True
         self.isNonAtomicExpression = True
         # ok as a default from here down the ancestory. See register also
-        self.renderCategory = FuncRenderType.CALL
+        #self.renderCategory = FuncRenderType.CALL
         self.register = None
         
 
@@ -522,7 +518,9 @@ class ExpressionWithBody(Expression):
         StdSeqPrint.__init__(self, 'ExpressionWithBody')
         self.body = []
         self.hasBody = True
-        self.renderCategory = FuncRenderType.DEF
+        #! always true so far, but don't want to initialize like this
+        self.isDef = True
+        #self.renderCategory = FuncRenderType.DEF
 
 
 

@@ -96,7 +96,7 @@ class CodeBuilder():
         '''
         Definition label writer.
         '''
-        if (t.tpe == STRING_CONSTANT):
+        if (t.tpe == ConstantKind.string):
             self.constB.append('"')
             self.constB.append(t.data)
             self.constB.append('"')
@@ -110,9 +110,9 @@ class CodeBuilder():
         '''
         f = stock_tmpl['data_move']
         cnst = ''
-        if (t.tpe == STRING_CONSTANT):
+        if (t.tpe == ConstantKind.string):
             cnst = '"{0}"'.format(t.data)
-        elif (t.tpe == FLOAT_CONSTANT):
+        elif (t.tpe == ConstantKind.floatNum):
             #TODO: Move to a template (should react to type, too...?)
             cnst = '__float64__({0})'.format(t.data)
         else:
@@ -158,7 +158,7 @@ class CodeBuilder():
         elif (isinstance(tree, Mark)):
             return tree.data
         elif (isinstance(tree, Constant)):
-            if (tree.tpe == STRING_CONSTANT):
+            if (tree.tpe == ConstantKind.string):
                 return '""{0}"'.format(tree.data)
             else:
                 return tree.data
