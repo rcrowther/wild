@@ -1,0 +1,14 @@
+I find no meaning in those one-line summaries of code. If you need one,
+
+I have many reasons; historical, personal, and cultural; for disliking C++. If any idea here looks like C++, it's because I overlooked the idea, or ran out of keys to make a substitution.
+
+
+
+Why not LLVM?
+LLVM, if I do not misinterpreate the project, produces a backend with modular components. The project now covers the whole of a compile chain, except front-end parsers, produced with the best of modern compiler thinking.
+
+LLVM can do anything the 'wild' parser-generator can do. It could create a 'wild' parser in a handful of phases. Such a project would be a toy to LLVM, which can run 80+ phases with an intermediate language, which 'wild' lacks. An LLVM implementation would be faster, widely compatible, and offer fabulous opportunities for language extension.
+
+But why do that? 'wild' was not made for the 'education' of the original coder. 'wild' is a reduction, which naturally involves choices, to the smallest-but-good-in-some-kind-of-way possible. An LLVM 'wild' offers no advantages over the code supplied. Working through the code supplied, and continues to supply, much of the reasoning for 'wild'. 'wild' is too simple for LLVM---to use it may be a disadvantage. 
+
+

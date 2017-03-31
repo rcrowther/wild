@@ -10,7 +10,7 @@ This is the list of codes. The all will take parameters.
 '''
 # No notion of type is here preserved.
 # As no notion of type, no notion of immutabilty, reference, or other annotaion is preserved.
-# Somewhat explicit, NOT bytecode. 
+# Somewhat explicit, NOT universal bytecode. 
 # It is assumed these ideas are resoved before this stage e.g. an immutable value is tested never to be altered. A value type may be resolved to be a literal or a reference, dependant on if the platform is able to handle the size. 
 # 'slots' are used for setting up parameters. 'slots' may be registers or stack, depending on call convention
 # Unlike other intermediate codes, this therefore assumes decisions have been made about how to handle types. For examle, on x64, anything less than 64bit inteers may be on slots. But bigger number types will be handled by calls. 

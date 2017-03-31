@@ -92,16 +92,21 @@ class RunnerContext:
     def _internalPhases(self):
        return [
        SyntaxPhase(self.reporter, self.settings),
+       phases.TreePhases.RemoveCommentsPhase(self.reporter),
        phases.TreePhases.MarkNormalizePhase(self.reporter, self.settings),
+       phases.TreePhases.SplitValuesPhase(self.reporter),
        phases.InternPhase(self.expSymbolTable, self.reporter, self.settings),
-       phases.TreePhases.UnaryMinusPhase(self.reporter, self.settings),
+       #phases.TreePhases.UnaryMinusPhase(self.reporter, self.settings),
        #? This can't go here. Point of fact, it must go as
        # processing on the final file, as the CodeGenPhase needs
        # to see operators etc.? (what about FunctionCategorizePhase?)
        #phases.NASMPreprocessPhase(self.reporter, self.settings),
-       phases.TreePhases.FunctionCategorizePhase(self.codeGenContext, self.reporter, self.settings),
+       phases.LinearizePhases.FunctionCategorizePhase(self.codeGenContext, self.reporter, self.settings),
        phases.LinearizePhases.FunctionUnnestPhase(self.architectureContext),
-       phases.LinearizePhases.ParseLiveRangesPhase(self.reporter)
+       phases.LinearizePhases.ParseLiveRangesPhase(self.reporter),
+       phases.LinearizePhases.ChooseRegistersPhase(self.architectureContext, self.reporter),
+       phases.LinearizePhases.ToSplicecode(self.reporter)
+
        #CodeGenPhase(self.reporter, self.codeGenContext, self.settings)
        ]
 
@@ -112,7 +117,8 @@ class RunnerContext:
       else:
         self.reporter.info("{0}:".format(item))
 
-    # e.g.?
+    #? Better to quit without run, if data requested, in what circumstance?
+    # - no path? But not XOtree, tree, ranges, phase marks, tables...
     def run(self, compilationUnit):
        # If output tokens, print and quit
        if (self.settings.getValue('XOtokens')):
@@ -124,6 +130,11 @@ class RunnerContext:
            self.reporter.info('Settings:\n' + self.settings.toPrettyString())
            sys.exit(0)
 
+       # If phase data output, print and quit
+       if (self.settings.getValue('XOphases')): 
+         self.reporter.info('Phases:\n' + self.phases.phaseDataToString())
+         sys.exit(0)
+
        endPhaseName = self.settings.getValue('XCtoPhase')
        phaseList = self.phases
        if (endPhaseName):
@@ -133,11 +144,13 @@ class RunnerContext:
           else:
               phaseList = self.phases.take(endPhaseName)
 
+       endPhaseName = endPhaseName if (endPhaseName) else 'all'
 
-       # If phase data output, print and quit
-       if (self.settings.getValue('XOphases')):
-         self.reporter.info('Phases:\n' + phaseList.phaseDataToString())
-         sys.exit(0)
+
+       #!
+       #if (self.settings.getValue('XOphases')):
+       #  self.reporter.info('Phases:\n' + phaseList.phaseDataToString())
+       #  sys.exit(0)
 
        for p in phaseList:
          if (self.settings.getValue('XCphases')):

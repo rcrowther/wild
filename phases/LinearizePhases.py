@@ -3,9 +3,37 @@
 
 from Phase import Phase
 #from reporters import Reporter
-from phases.TreeActions import  RegisterAllocate
-from phases.LinearizeActions import FuncUnnest, ParseLiveRanges
+#from phases.TreeActions import  
+from phases.LinearizeActions import FunctionCategorize, FuncUnnest, FuncUnnest2, ParseLiveRanges, ChooseRegisters, ApplyRegistersToTree, TreeToSplicecode
 
+
+##################################################################
+#from phases.NASMActions import FunctionCategorize
+
+# Deprecated?
+class FunctionCategorizePhase(Phase):
+    '''
+    Since this includes a context, place as late as possible, but before 
+    other machine code phases (which rely on this)
+    '''
+    def __init__(self, mCodeContext, reporter, settings):
+        self.mCodeContext = mCodeContext
+        self.reporter = reporter
+        self.settings = settings
+
+        Phase.__init__(self,
+            "FunctionCategorize",
+            "decides how an operator in a tree node should be rendered",
+            True,
+            placeAfterSeq=['MarkNormalize']
+            )
+
+
+    def run(self, compilationUnit):
+      tree = compilationUnit.tree
+      FunctionCategorize(self.mCodeContext, tree, self.reporter)
+
+################################################################
 class FunctionUnnestPhase(Phase):
     '''
     Only needed if a code generator has a call convention using registers e.g. i64, but not standard i32.
@@ -22,7 +50,7 @@ class FunctionUnnestPhase(Phase):
     def __init__(self, architectureContext):
         self.architectureContext = architectureContext
         Phase.__init__(self,
-            "FuncUnnest",
+            "FunctionUnnest",
             "Unnest custom functions",
             True
             )
@@ -30,13 +58,13 @@ class FunctionUnnestPhase(Phase):
 
     def run(self, compilationUnit):
       tree = compilationUnit.tree
-      FuncUnnest(tree, compilationUnit.newNames, self.architectureContext)
+      FuncUnnest2(tree, compilationUnit.newNames, self.architectureContext)
 
 
-# As Subcomponent
+################################################
 class ParseLiveRangesPhase(Phase):
     '''
-    Must be run after Unnest.
+    Should be run after FuncUnnest.
     '''
     def __init__(self, reporter):
         self.reporter = reporter
@@ -44,7 +72,8 @@ class ParseLiveRangesPhase(Phase):
         Phase.__init__(self,
             "ParseLiveRanges",
             "Identify and collect the live ranges of variables",
-            True
+            True,
+            placeAfterSeq=['FuncUnnest']
             )
 
 
@@ -53,3 +82,55 @@ class ParseLiveRangesPhase(Phase):
       p = ParseLiveRanges(tree, self.reporter)
       compilationUnit.liveRanges = p.result()
 
+################################################
+class ChooseRegistersPhase(Phase):
+    '''
+    Must be run after ParseLiveRangesPhase.
+    '''
+    def __init__(self, architectureContext, reporter):
+        self.reporter = reporter
+        self.architectureContext = architectureContext
+        Phase.__init__(self,
+            "ChooseRegisters",
+            "allocate registers or stack marks to unallocated vars",
+            True,
+            # otherwise, the phase returns nothing
+            placeAfterSeq=['ParseLiveRangesPhase']
+            )
+
+
+    def run(self, compilationUnit):
+      tree = compilationUnit.tree
+      #print(compilationUnit.liveRanges)
+      #? Using callNoSaveRequired registers is ok, but not all possible registers.
+      # what we really need is registerNames, and where not callNoSaveRequired, to insert a push/pop save
+      registerMap = ChooseRegisters(
+        compilationUnit.liveRanges, 
+        self.architectureContext.callNoSaveRequired
+        )
+      #print(str(registerMap.result()))
+
+      #compilationUnit.liveRanges = alloc.result()
+      ApplyRegistersToTree(tree, registerMap.result(), self.reporter)
+
+###################################################
+class ToSplicecode(Phase):
+    '''
+    Should be run after ChooseRegistersPhase.
+    '''
+    def __init__(self, reporter):
+        self.reporter = reporter
+
+        Phase.__init__(self,
+            "ToSplicecode",
+            "Convert an AST tree to splicecode",
+            True,
+            placeAfterSeq=['ChooseRegistersPhase']
+            )
+
+
+    def run(self, compilationUnit):
+      tree = compilationUnit.tree
+      p = TreeToSplicecode(tree, self.reporter)
+      print('new splicecode:')
+      print(p.result())

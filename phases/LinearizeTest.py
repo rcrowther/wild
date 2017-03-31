@@ -2,7 +2,7 @@ import unittest
 
 
 from reporters import ConsoleStreamReporter
-import phases.TreeActions
+import phases.LinearizeActions
 
 class LinearizeTest(unittest.TestCase):
     '''
@@ -33,19 +33,19 @@ class LinearizeTest(unittest.TestCase):
       '''
       python3 -m unittest phases.LinearizeTest.LinearizeTest.test_reg_overlap
       '''
-      alloc = phases.TreeActions.RegisterAllocate(self.noninterfereRanges)
-      print(alloc.toString())
+      alloc = phases.LinearizeActions.ChooseRegisters(self.noninterfereRanges)
+      print(str(alloc))
 
     def test_reg_overlap(self):
       '''
       python3 -m unittest phases.LinearizeTest.LinearizeTest.test_reg_overlap
       '''
-      alloc = phases.TreeActions.RegisterAllocate(self.overlapRanges)
-      print(alloc.toString())
+      alloc = phases.LinearizeActions.ChooseRegisters(self.overlapRanges, registers)
+      print(str(alloc))
 
     def test_reg_spill(self):
       '''
       python3 -m unittest phases.LinearizeTest.LinearizeTest.test_reg_spill
       '''
-      alloc = phases.TreeActions.RegisterAllocate(self.spillRanges)
-      print(alloc.toString())
+      alloc = phases.LinearizeActions.ChooseRegisters(self.spillRanges)
+      print(str(alloc))

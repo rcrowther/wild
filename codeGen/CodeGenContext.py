@@ -2,7 +2,7 @@ from codeGen.Templates import tmpl, stock_tmpl, word_tmpl
 #import codeGen.architectureContext # import STACK, X64ArchitectureContext
 from codeGen.architectureContext import STACK, X64ArchitectureContext
 from trees import *
-from enumerations import FuncRenderType
+
 
 # Include, as other phase
 # code could use the data?
@@ -128,7 +128,7 @@ class X64CodeGenContext(CodeGenContext):
       #kind = tree.returnKind
       if (
       #(mark in self.mCodeFunctions)
-      tree.renderCategory == FuncRenderType.MCODE64
+      tree.isMachine
       and len(tree.children) == 2
       ): 
         self.mCodeFunctionCall(b, mark, tree)

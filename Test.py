@@ -7,6 +7,8 @@ import SymbolTables
 import wildio.Source
 import reporters.ConsoleStreamReporter
 import TokenSyntaxer
+import ArchitectureRegisterContext
+
 
 class Test(unittest.TestCase):
     '''
@@ -52,3 +54,32 @@ class Test(unittest.TestCase):
       #pl1 = pl.take('intern')
       #assert(pl1.size() == 2)
       #print(pl.phaseDataToString())
+
+    def test_arch(self):
+      '''
+      python3 -m unittest Test.Test.test_arch
+      '''
+      ac = ArchitectureRegisterContext.X64ArchitectureRegisterContext()
+
+      print(str(ac))
+      print('getGeneralRegister:')
+      for i in range(ac.generalIdxsSize + 3):
+          #idx = ac.getGeneralRegister(i)
+          print(ac.generalRegisterToString(i))
+
+      print('getCallRegister:')
+      for i in range(ac.callConventionIdxsSize + 3):
+          #idx = ac.getGeneralRegister(i)
+          print(ac.callRegisterToString(i))
+
+      print('call register take:')
+      registers = ac.callRegisterTake(ac.callConventionIdxsSize + 3)
+      for i in registers:
+          print(ac.registerToString(i))
+
+      print('single locations:')
+      print('  abstract:' + ac.registerToString(ac.ABSTRACT))
+      print('  return:' + ac.registerToString(ac.RETURN))
+      print('  float return:' + ac.registerToString(ac.FLOAT_RETURN))
+      print('  stack pointer:' + ac.registerToString(ac.STACK_POINTER))
+      #print(p.ast().toPrettyString())

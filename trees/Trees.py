@@ -2,31 +2,32 @@
 
 
 from Kinds import UnknownKind, Any, Kind, IntegerKind, FloatKind, StringKind
-from trees.VisitorBuilder import VisitorBuilder, PrettyVisitorBuilder, TaggedPrettyVisitorBuilder, TersePrettyVisitorBuilder
+#from trees.VisitorBuilder import VisitorBuilder, PrettyVisitorBuilder, TaggedPrettyVisitorBuilder, TersePrettyVisitorBuilder
 
 import trees.Flags
 import Position
 
-from enumerations import FuncRenderType
-
+from enumerations import FuncRenderType, MachineRenderKind
 from collections import namedtuple
-
 from util.codeUtils import StdPrint, StdSeqPrint
 
-#PathedIdentifier = namedtuple('SymbolData', 'path identifier')
 
-class PathedIdentifier(namedtuple('SymbolData', 'path identifier')):
+# need to know if val or func or ambiguity in calls 
+class PathedIdentifier(namedtuple('SymbolData', 'path identifier isMutable isFunc')):
         '''
         path string
         identifier string
         '''
-       #? could be (mark != NoPathedIdentifier)?
+       #? could be (mark != EmptyPathedIdentifier)?
         def isEmpty(self):
             return self.identifier == ''
 
-       #? could be (mark != NoPathedIdentifier)?
+       #? could be (mark != EmptyPathedIdentifier)?
         def isNotEmpty(self):
             return self.identifier != ''
+
+        def toFunc(self):
+            return self._replace(isFunc = True)
 
         #? Provide in  tree. Used a lot.
         def replaceIdentifier(self, newIdentifier):
@@ -41,19 +42,25 @@ class PathedIdentifier(namedtuple('SymbolData', 'path identifier')):
              b.append(e)
              b.append('.')
            b.append(self.identifier)
+           b.append(', ')
+           b.append(str(self.isFunc))
            return b
+
+        def toPrettyString(self):
+            b = []
+            self.addPrettyString(b)
+            return ''.join(b)
 
         def addString(self, b):
             if (self.path):
                 b.append(str(self.path))
                 b.append(', ')
             b.append(self.identifier)
+            b.append(', ')
+            b.append(str(self.isMutable))
+            b.append(', ')
+            b.append(str(self.isFunc))
             return b
-
-        def toPrettyString(self):
-            b = []
-            self.addPrettyString(b)
-            return ''.join(b)
 
         '''
         path list of identifiers
@@ -64,7 +71,23 @@ class PathedIdentifier(namedtuple('SymbolData', 'path identifier')):
             b.append(')')
             return ''.join(b)
 
-NoPathedIdentifier = PathedIdentifier([], '')
+def noPathIdentifierValue(identifier):
+   return PathedIdentifier([], identifier, False, False)
+
+def noPathIdentifierFunc(identifier):
+   return PathedIdentifier([], identifier, False, True)
+
+class _EmptyPathedIdentifierClass(PathedIdentifier):
+        def toPrettyString(self):
+            return '<no path>'
+
+        '''
+        path list of identifiers
+        '''
+        def __str__(self):
+            return '<no path>'
+
+EmptyPathedIdentifier = _EmptyPathedIdentifierClass([], '', False, False)
 
 
 
@@ -98,63 +121,32 @@ class Tree(StdSeqPrint):
         '''
         self.isNonAtomicExpression = False
 
+        # the below are not necessary for an AST
+        # and not necessary in some nodes
+        # but, aside from some weight, are easier here?
         '''
         An abstract expression may be rendered in several ways.
         e.g. assembler calls, macros, values, assembler instructions etc.
         This field allows analysis tools to note decisions.
-        The field defaults to saying this expression is rendered as a call.
+        The field defaults to saying this expression is not a function.
         '''
         self.renderCategory = FuncRenderType.NOT_FUNC
-        #? The below is not necessary, may become supplemental nodes?
-        # ok as a default from here down the ancestory. See renderCategory also
-        #? not needed for comments and Marks, but yes for Expressions and Constants? 
+        # Next few are used for rendering.
+        # They make an interface to information scattered
+        # between architecture, type, and initial parsing 
+        #? these are abstract categories, not machine code?
+        self.isConstant = False
+        self.isData = False
+        self.isFunc = False
+        #used
+        self.isMachine = False
+        # Used to hold an enumeration of machinecode kinds
+        #? Currently 8/32/64 num, but could be string types too?
+        self.machineKind = MachineRenderKind.not_machine
+        # used to hold the used (result) register when tree nodes
+        # are shaped to machine code 
         self.register = None
-
-   
-    #def isTwig(self):
-    #    '''
-    #    Identifies Tree leaf nodes
-    #    A leaf node contains no further evaluable Expressions.
-    #    This is, of course, the self-evaluating Constant.
-    #    However, it also includes a function call. Which is a 
-    #    a Mark as a  an expression. So the Expression
-    #    -? must not be a definition,
-    #    - have no, or empty, brackets.
-    #    The same applies to an ExpressionWithBody, if meeting
-    #    the Expression terms and also has an empty body.
-
-    #    leaves:
-    #    Constant(0.4 Kind(""float") )
-    #    empty Expression(actionMark: Mark(""zee!"))
-
-    #    An Expression function call will not be a leaf if the
-    #    function contains inlines because, in that case, further processiong
-    #    can be done. (what if it is an inline? probably ok).
-    #    '''
-    #   return False
-
-    #def isTwigParent(self):
-    #   '''
-    #   Identifies Tree leaf nodes, or immediate ancestors.
-
-    #   A Tree isTwig if it contains only a leaf, or is an
-    #   ancestor of a leaf. Generally, this can be seen
-    #   as having no dependancy on other trees. 
-
-    #   A Tree is also LeafOrleafParent if it is an Expression containing
-    #   a Mark only (a function call). 
-    #   # ? This expression must not be a
-    #   definition, 
-    #   and have no, or empty brackets. 
-
-    #   An Expression function call will not be LeafOrleafParent if the
-    #   function is inlined because, in that case, further processiong
-    #    can be done. 
-
-    #  A Tree is also LeafOrleafParent if all immediate children are
-    #   LeafOrleafParent.
-    #   '''
-    #return False
+        self.returnKind = UnknownKind
 
     def _addIndentedValue(self, b, indent, v):
        b.append(indent)
@@ -163,14 +155,13 @@ class Tree(StdSeqPrint):
     def addPrettyString(self, b, indent):
        self._addIndentedValue(b, indent, str(self.renderCategory))
        b.append('\n')
-       self._addIndentedValue(b, indent, str(self.register))
+       self._addIndentedValue(b, indent, 'machine' if self.isMachine else '!Machine')
+       b.append('\n')
+       self._addIndentedValue(b, indent, str(self.machineKind))
+       b.append('\n')
+       self._addIndentedValue(b, indent,  str(self.register) if self.register else '!Register')
        return b
-    '''
-    def toPrettyString(self):
-      b = TaggedPrettyVisitorBuilder(self, True)
-      #b = TersePrettyVisitorBuilder(self)
-      return "".join(b.result())
-    '''
+
     def addPrettyStringWrap(self, b, indent):
       self._addIndentedValue(b, indent, self.entitySuffix)
       b.append('(\n')
@@ -185,10 +176,8 @@ class Tree(StdSeqPrint):
       return "".join(b)
     
     def addStringWithSeparator(self, b, sep):
-       #b.append('renderCategory: ')
        b.append(str(self.renderCategory))
        b.append(sep)
-       #b.append('register: ')
        b.append(str(self.register))
        return b
 
@@ -212,8 +201,6 @@ class Comment(Tree):
     def _truncString(self):
         return self.data[0:8] + '...' if (len(self.data) > 8) else self.data
 
-
-
     def addPrettyString(self, b, indent):
        self._addIndentedValue(b, indent, self._truncString())
        return b
@@ -228,89 +215,7 @@ class Comment(Tree):
 
 
 
-# messy, refactor
-
-class ExpressionBase(Tree):
-    '''
-    Base for expressions 
-    i.e. all active code. Has a return Kind, but little else.
-    Never activated.
-    '''
-    def __init__(self, position = Position.NoPosition):
-        Tree.__init__(self, position)
-        StdSeqPrint.__init__(self, 'ExpressionBase')
-        self.returnKind = UnknownKind
-        # Big question over how to handle defines
-        # Several models possible e.g. LISP,
-        # (defun symbol (lambda (args*) (body*)))
-        # For now, using this define attribute.
-        # A value definition is much the same as an expression
-        # but defined
-        # val x = 42
-        # consistent, difficult to handle with the split parameters
-        # Expression(actionMark: val, ('x, 42))
-        # but using,
-        # Expression(actionMark: 'val,  defMark: 'x, (42))
-        # fnc x(a b)()
-        # ExpressionWithBody(actionMark: 'fnc,  defMark: 'x, (a b) ())
-        #self.defMark = None
-        self.defMark = NoPathedIdentifier
-        #? The below is not necessary, may become supplemental nodes?
-        '''
-        Tests if this definition was inserted by the compiler
-        '''
-        self.isDefinitionFromCompiler = False
-
-    # Needs testing for compatibility if called more than once?
-    # What if we know a kind name but not type?
-    def setReturnKind(self, name):
-        k = Kind(name)
-        self.returnKind = k
-        return k
-
-    def addPrettyString(self, b, indent):
-       if (self.defMark.isNotEmpty()):
-           self._addIndentedValue(b, indent, self.defMark.toPrettyString())
-           #self._addIndentedValue(b, indent, str(self.defMark))
-           b.append('\n')
-       self._addIndentedValue(b, indent, self.returnKind.toString())
-       b.append('\n')
-       Tree.addPrettyString(self, b, indent)
-       return b
-
-    def addStringWithSeparator(self, b, sep):
-    #def addString(self, b):
-       #if (self.defMark !=  No  ):
-       #b.append('defmark: ')
-       b.append(str(self.defMark))
-       b.append(sep)
-       #b.append('returnKind: ')
-       self.returnKind.addString(b)
-       b.append(sep)
-       Tree.addStringWithSeparator(self, b, sep)
-       return b
-
-#class ExpressionBase(Tree):
-    #def __init__(self, name):
-        #Tree.__init__(self, name)
-        #self.returnKind = UnknownKind 
-        #self.params = []
-
-    ## Needs testing for compatibility if called more than once?
-    #def setReturnKind(self, name):
-        #k = Kind(name)
-        #self.returnKind = k
-        #return k
-
-    #def appendParam(self, name):
-        #'''
-        #@return the expression, so it can have a Kind attached.
-        #'''
-        ## isn't this just a symbol with kind?
-        ## how do lisp compilers handle?
-        #p = Expression(name)
-        #self.params.append(p)
-        #return p
+#! messy, refactor as Enum
 
 INTEGER_CONSTANT = 1
 FLOAT_CONSTANT = 2
@@ -341,12 +246,16 @@ class Constant(Tree):
     Strings, numbers. Also symbols?
     Has no children, parameters, generic parameters...
     Has data, and rough type. Inherits returnKind
+    Only thin shared with Expressions is the returntype. 
+    Othewrwise, it's a basic tree.
     @data text gathered from parse
     @tpe general type of Constant i.e. Enum
     '''
     def __init__(self, position, data, tpe):
         ExpressionBase.__init__(self, position)
         StdSeqPrint.__init__(self, 'Constant')
+        # it is, of some kind, be that isMachine or not, etc.
+        self.isConstant = True
         self.data = data
         self.tpe = tpe
         self.returnKind = Any
@@ -395,26 +304,104 @@ def StringConstant(data, position = Position.NoPosition):
   return t
 
 
-class Mark(ExpressionBase):
+
+class ExpressionBase(Tree):
     '''
-    Currently unused, but may be shortcut to no-param calls.
-    Not evaluated or compiled, a pointer to some place.
-    Has no children, parameters, generic parameters...
-    Has data/name. Inherits returnKind
+    Base for expressions 
+    i.e. all active code. Has a return Kind, but little else.
+    Never activated.
     '''
-    def __init__(self, data):
-        ExpressionBase.__init__(self, Position.NoPosition)
-        #StdPrint.__init__(self, 'Mark')
-        StdSeqPrint.__init__(self, 'Mark')
-        self.data = data
-        self.returnKind = Any
+    def __init__(self, position = Position.NoPosition):
+        Tree.__init__(self, position)
+        StdSeqPrint.__init__(self, 'ExpressionBase')
+        self.returnKind = UnknownKind
+        # Big question over how to handle defines
+        # Several models possible e.g. LISP,
+        # (defun symbol (lambda (args*) (body*)))
+        # For now, using this define attribute.
+        # A value definition is much the same as an expression
+        # but defined
+        # val x = 42
+        # consistent, difficult to handle with the split parameters
+        # Expression(actionMark: val, ('x, 42))
+        # but using,
+        # Expression(actionMark: 'val,  defMark: 'x, (42))
+        # fnc x(a b)()
+        # ExpressionWithBody(actionMark: 'fnc,  defMark: 'x, (a b) ())
+        ##? Uncertain about if the actionMark/defMark
+        # would be better stored as idMark/defMark e.g. not,
+        # actionMark=val defmark=zee
+        # but,
+        # idMark=zee defMark=val
+        # - the first is better at finding ids of definitions, 
+        # - the second is better at finding all idMarks, regardless
+        self.defMark = EmptyPathedIdentifier
+        # Now we are moving to using defmark as firstMarkAsSymbol
+        # need to track defs
+        # (an assign is also a firstMarkAsSymbol expression)
+        #? will be used for source code defs, or machine code defs?
+        #? are constants 'defs'? (probably no, but then, what is this?)
+        self.isDef = False
+        #? The below is not necessary, may become supplemental nodes?
+        '''
+        Tests if this definition was inserted by the compiler
+        '''
+        self.isDefinitionFromCompiler = False
+
+
+    # Needs testing for compatibility if called more than once?
+    # What if we know a kind name but not type?
+    def setReturnKind(self, name):
+        k = Kind(name)
+        self.returnKind = k
+        return k
+
+    def addPrettyString(self, b, indent):
+       self._addIndentedValue(b, indent, self.defMark.toPrettyString())
+       b.append('\n')
+       self._addIndentedValue(b, indent, self.returnKind.toString())
+       b.append('\n')
+       self._addIndentedValue(b, indent, 'isDef' if self.isDef else '!Def')
+       b.append('\n')
+       Tree.addPrettyString(self, b, indent)
+       return b
 
     def addStringWithSeparator(self, b, sep):
-    #def addString(self, b):
-       ExpressionBase.addStringWithSeparator(self, b, sep)
+       b.append(str(self.defMark))
        b.append(sep)
-       #b.append('data: ')
-       b.append(self.data)
+       self.returnKind.addString(b)
+       b.append(sep)
+       Tree.addStringWithSeparator(self, b, sep)
+       return b
+
+
+class Mark(ExpressionBase):
+    '''
+    We need a Tree element to wrap an abstract name.
+    Not needed for action or definition marks, where
+    there are dedicated fields, but good for parameters.
+    '''
+    def __init__(self, defMark):
+        ExpressionBase.__init__(self, Position.NoPosition)
+        StdSeqPrint.__init__(self, 'Mark')
+        self.returnKind = Any
+        self.defMark = defMark
+        #? The below is not necessary, may become supplemental nodes?
+        '''
+        Tests if this definition was inserted by the compiler
+        '''
+        self.isDefinitionFromCompiler = False
+
+    def addPrettyString(self, b, indent):
+       self._addIndentedValue(b, indent, self.defMark)
+       b.append('\n')
+       self._addIndentedValue(b, indent, self.returnKind.toString())
+       return b
+
+    def addStringWithSeparator(self, b, sep):
+       b.append(self.defMark)
+       b.append(sep)
+       self.returnKind.addString(b)
        return b
 
 
@@ -428,25 +415,24 @@ class Expression(ExpressionBase):
     '''
     def __init__(self, actionMark, position = Position.NoPosition):
         ExpressionBase.__init__(self, position)
-        #StdPrint.__init__(self, 'Expression')
         StdSeqPrint.__init__(self, 'Expression')
-        # if constant
-        # if expression
-        # if data
-        # if kind...
-        #self.actionMark = Mark(actionMark)
         self.actionMark = actionMark
+        '''
+        Children means parameter marks, for definitions, 
+        or parameter Expressions, for calls, 
+        '''
         self.children = []
         # Used in defs
         #? May be extended to a series of flags?
         self.isMutable = False
         self.hasParams = True
         self.isNonAtomicExpression = True
-        #? The below is not necessary, may become supplemental nodes?
         # ok as a default from here down the ancestory. See register also
         self.renderCategory = FuncRenderType.CALL
         self.register = None
+        
 
+   #? deprecate
     def isDefFromConst(self):
         '''
         Used in code generation to test for static allocations. 
@@ -481,6 +467,7 @@ class Expression(ExpressionBase):
         self.children.append(t)
         return t
 
+    #? does this work?
     def removeChild(self, obj):
         self.children.remove(obj)
 
@@ -491,11 +478,8 @@ class Expression(ExpressionBase):
         self.children = [newObj if e==fromObj else e for e in self.children]
 
     def addPrettyString(self, b, indent):
-       #print(str(self.actionMark))
        self._addIndentedValue(b, indent, self.actionMark.toPrettyString())
-       #self._addIndentedValue(b, indent, str(self.actionMark))
        b.append('\n')
-       #b.append('returnKind: ')
        ExpressionBase.addPrettyString(self, b, indent)
        b.append('\n')
        self._addIndentedValue(b, indent, 'children:\n')
@@ -510,12 +494,7 @@ class Expression(ExpressionBase):
        return b
 
     def addStringWithSeparator(self, b, sep):
-    #def addString(self, b):
-       #b.append(', actionMark: ')
-       #b.append(self.actionMark.data)
        b.append(str(self.actionMark))
-       #b.append(', childCount: ')
-       #b.append(str(len(self.children)))
        b.append(sep)
        ExpressionBase.addStringWithSeparator(self, b, sep)
        b.append(sep)
@@ -540,10 +519,10 @@ class ExpressionWithBody(Expression):
     '''
     def __init__(self, actionMark, position = Position.NoPosition):
         Expression.__init__(self, actionMark, position)
-        #StdPrint.__init__(self, 'ExpressionWithBody')
         StdSeqPrint.__init__(self, 'ExpressionWithBody')
         self.body = []
         self.hasBody = True
+        self.renderCategory = FuncRenderType.DEF
 
 
 
@@ -560,17 +539,15 @@ class ExpressionWithBody(Expression):
     def updateChild(self, fromObj, to):
         self.children = [to if e==fromObj else e for e in self.children]
         self.body = [to if e==fromObj else e for e in self.body]
-    #def isTwigParent(self):
-    #    r = True
-    #    for c in self.children:
-    #      r = r and c.isTwig()
-    #    for e in self.body:
-    #      r = r and e.isTwig()
-    #    return r 
 
     def insertBodyChildBefore(self, seekObj, newObj):
         idx = self.body.index(seekObj)
         self.body.insert(idx, newObj)
+
+    #! should note success?
+    #! doubt if this works?
+    def removeBodyChild(self, obj):
+        self.body.remove(obj)
 
     def addPrettyString(self, b, indent):
        Expression.addPrettyString(self, b, indent)
@@ -587,10 +564,6 @@ class ExpressionWithBody(Expression):
        return b
 
     def addStringWithSeparator(self, b, sep):
-    #def addString(self, b):
-       #b.append(sep)
-       #b.append('bodyCount: ')
-       #b.append(str(len(self.body)))
        Expression.addStringWithSeparator(self, b, sep)
        b.append(sep)
        b.append('body: ')
@@ -600,7 +573,6 @@ class ExpressionWithBody(Expression):
              first = False
          else:
              b.append(sep)
-         #c.addStringWithSeparator(b, sep)
          b.append(str(c))
        return b
 

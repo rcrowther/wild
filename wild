@@ -12,6 +12,10 @@ from reporters.ConsoleStreamReporter import ConsoleStreamReporter
 from Settings import Settings
 
 
+def error(msg):
+    print(msg)
+
+
 
 def reportHelp(settings):
     usage = "Usage: wild <options> <filepaths>\nRun the wild compiler.\nIf no argument is given, the interpreter is run.\n\nOptions:\n"
@@ -84,7 +88,9 @@ else:
                
                parseOk = settings.testAndSetValue(opt, value)
                if (not parseOk):
-                 reporter.warning('commandline option unrecognised:switch: {0}'.format(opt))    
+                   error('commandline option unrecognised:switch: {0}'.format(opt))    
+                   reportHelp(settings)
+                   sys.exit(0)
             i += 1
         
         # get files
@@ -97,13 +103,15 @@ else:
         #print(invokation)
         #print(switches)
         #print(files)
-    
+        assertedFiles = files if (files) else  [os.getcwd()]
         # get and verify files 
         entryFiles = expandFiles(reporter, files)
         filteredFiles = [f for f in entryFiles if (f[-5:] == '.wild')]
     
         if (not filteredFiles):
-            reporter.error('no files found to parse: expanded filenames:{0}'.format(str(entryFiles)))
+            fStr = ', '.join(files)
+            error('no files found to parse: filepaths:[{0}]'.format(fStr))
+            sys.exit(0)
         else:
     
             #print(filteredFiles)    

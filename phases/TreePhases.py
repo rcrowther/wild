@@ -4,9 +4,31 @@
 from Phase import Phase
 from TokenSyntaxer import TokenSyntaxer
 #from reporters import Reporter
-from phases.TreeActions import MarkNormalize, UnaryMinus, FunctionCategorize
+from phases.TreeActions import MarkNormalize, RemoveComments, SplitVals
 
-# As Subcomponent
+#! need a cleanup phase, at least to remove comments
+###################################################
+class RemoveCommentsPhase(Phase):
+    '''
+    Removes comments from the tree
+    '''
+    def __init__(self, reporter):
+        self.reporter = reporter
+
+        Phase.__init__(self,
+            "RemoveComments",
+            "Removes comments from the tree",
+            True
+            )
+
+
+    def run(self, compilationUnit):
+      tree = compilationUnit.tree
+      RemoveComments(tree, self.reporter)
+
+
+
+###################################################
 class MarkNormalizePhase(Phase):
     '''
     Substitues symbols for marks in normalised alphanumeric form e.g. '+' becomes '$$plus$'
@@ -29,23 +51,16 @@ class MarkNormalizePhase(Phase):
 
 
 
-
-
-# As Subcomponent
-class UnaryMinusPhase(Phase):
+##################################################
+class SplitValuesPhase(Phase):
     '''
-    Crush plus/minus sign expression-wrapped Constant 
-    to Constant with signed numeric content 
-    (for consistency, the token syntaxer outputs like this).
-    Must go after markNormalise (currently)
     '''
-    def __init__(self, reporter, settings):
+    def __init__(self, reporter):
         self.reporter = reporter
-        self.settings = settings
 
         Phase.__init__(self,
-            "UnaryMinus",
-            "Replace minus expression with constants with minus constant",
+            "SplitValues",
+            "Splits value expressions into definitions and assignments",
             True,
             placeAfterSeq=['MarkNormalize']
             )
@@ -53,33 +68,9 @@ class UnaryMinusPhase(Phase):
 
     def run(self, compilationUnit):
       tree = compilationUnit.tree
-      UnaryMinus(tree, self.reporter)
+      SplitVals(tree, self.reporter)
 
 
 
-#from phases.NASMActions import FunctionCategorize
-
-# Deprecated?
-class FunctionCategorizePhase(Phase):
-    '''
-    Since this includes a context, place as late as possible, but before 
-    other machine code phases (which rely on this)
-    '''
-    def __init__(self, mCodeContext, reporter, settings):
-        self.mCodeContext = mCodeContext
-        self.reporter = reporter
-        self.settings = settings
-
-        Phase.__init__(self,
-            "FunctionCategorize",
-            "decides how an operator in a tree node should be rendered",
-            True,
-            placeAfterSeq=['MarkNormalize']
-            )
-
-
-    def run(self, compilationUnit):
-      tree = compilationUnit.tree
-      FunctionCategorize(self.mCodeContext, tree, self.reporter)
 
 

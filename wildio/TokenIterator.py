@@ -9,8 +9,9 @@ from util.codeUtils import StdSeqPrint, multilineToString
 # Test for end
 # Need to test for '$' initially, as used to mark 
 # internal-generated names and marked-up operator to alphanumeric transforms.
-# Not reporting errors?
+#! take a reporter for 'token error'
 #! this is for string sources?
+#! do stubs '???'
 class TokenIterator(StdSeqPrint):
     '''
     Iterate comments, identifiers, numerics, etc.
@@ -100,7 +101,22 @@ class TokenIterator(StdSeqPrint):
             )
 
     def isNumeric(self, c):
+        '''
+        All latin numbers
+        '''
         return (c >= 48 and c <= 57)
+
+    def isInitialNumeric(self, c):
+        '''
+        All latin numbers and '+', '-'
+        '''
+        return ((c == 43 or c == 45) or (c >= 48 and c <= 57))
+
+    def isPlusMinus(self, c):
+        '''
+        All '+', '-'
+        '''
+        return (c == 43 or c == 45)
 # comment
 #number
 
@@ -160,13 +176,12 @@ class TokenIterator(StdSeqPrint):
            return False
        else:
             return False
-
+    
     def scanNumber(self):
        if (self.isNumeric(self.c) 
             #or self.c == PLUS 
             #or self.c == HYPHEN_MINUS
             ):
-            #while(self.isNumeric(self.c)):
             while(True):
                 self.b.append(self.c)
                 self._next()
@@ -186,6 +201,8 @@ class TokenIterator(StdSeqPrint):
             return True
        else:
             return False
+
+
 
     def scanIdentifier(self):
         '''
@@ -223,6 +240,20 @@ class TokenIterator(StdSeqPrint):
         else:
           return False
 
+    def scanPlusMinus(self):
+        '''
+        ['+', '-'] ~ (numeric|identifier)
+        '''
+        if (self.isPlusMinus(self.c)):
+            self.b.append(self.c)
+            self._next()
+            if (self.isNumeric(self.c)):
+                self.scanNumber()
+            else:
+                self.scanOperatorIdentifier()
+            return True
+        else:
+            return False
 
     def skipWhitespace(self):
           while (self.isWhitespace(self.c)):
@@ -240,6 +271,8 @@ class TokenIterator(StdSeqPrint):
         elif (self.scanPunctuation()):
             pass
         elif (self.scanIdentifier()):
+            pass
+        elif (self.scanPlusMinus()):
             pass
         elif (self.scanOperatorIdentifier()):
             pass
@@ -267,12 +300,12 @@ class TokenIterator(StdSeqPrint):
             first = False
           else:
             b.append(sep)
-            b.append(tokenToString[e])
-            txt = self.textOf()
-            if (txt):
-               b.append(' -> ')
-               o = multilineToString(txt)
-               b.append(o)
+          b.append(tokenToString[e])
+          txt = self.textOf()
+          if (txt):
+             b.append(' -> ')
+             o = multilineToString(txt)
+             b.append(o)
        return b
 
 

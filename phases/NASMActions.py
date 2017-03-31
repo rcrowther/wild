@@ -1,9 +1,9 @@
 
 
 
-from trees.TreeTraverser import CallbackTraverser, CallbackUpdater
+from trees.TreeTraverser import CallbackTraverser
 
-from enumerations import FuncRenderType
+from enumerations import MachineRenderKind
 
 class NASMPreprocess(CallbackTraverser):
     '''

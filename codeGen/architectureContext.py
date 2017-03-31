@@ -21,6 +21,7 @@ class ArchitectureContext():
       self,
       registerNames,
       callConventionRegisterNames,
+      #! refactor to callNoSaveRequiredRegisterNames
       callNoSaveRequired,
       returnRegister,
       floatReturnRegister,
@@ -60,18 +61,28 @@ class ArchitectureContext():
       else:
         return STACK
 
+   #? Unused, but should be used.
+    def isSaveRequired(self, registerName):
+      if (registerName == STACK):
+          return False
+      else:
+          return (not (registerName in self.callNoSaveRequired))
 
 class X64ArchitectureContext(ArchitectureContext):
     def __init__(self):
         ArchitectureContext.__init__(self, 
+            # registerNames
             ['rax', 'rbx', 'rcx', 'rdx', 'r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r7', 'r8', 'r9', 'r10', 'r11', 'r12', 'r13', 'r15'],
+            # callConventionRegisterNames
             ['rdi', 'rsi', 'rdx', 'rcx', 'r8', 'r9'],
-            # preserved across function call: RBX RBP ESP R12 R13 R14 R15
+            # callNoSaveRequired
+            # *Not* or *is* preserved across function call: RBX RBP ESP R12 R13 R14 R15?
             # Can be used in general, as well as calls?
             ['rax', 'rdi', 'rsi', 'rdx', 'rcx', 'r8', 'r9', 'r10', 'r11'],
             # return register: rax, rdx
             'rax',
             'XMM0',
+            # hasMMX
             True
             )
 

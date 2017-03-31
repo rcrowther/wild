@@ -1,10 +1,7 @@
 #!/usr/bin/python3
 
 import sys
-#import io
-#from io import *
 from Position import Position
-#from Reporter import Reporter
 from reporters import Reporter
 from tokens import *
 from trees import *
@@ -13,8 +10,7 @@ from Kinds import *
 from wildio import *
 
 
-
-##
+##!
 # Position/reporter
 # Continue the block() build
 # Make all rules return results?
@@ -23,7 +19,14 @@ from wildio import *
 # Have a body vs. child issue, which means passing back lists, not passing trees in?
 # Lets boost the booleans
 # Decide type annotation positions
-# How to do parameter definitions? Can be Mark direct?
+#! How to do parameter definitions? Can be Mark direct? Seems
+# too difficult to make func-only definitions, use a cleanup/rationalise
+# phase to 'find simple expressions inside func def/calls then
+# replace with Mark?'
+#! Some roots can be rationalized, see expressionCall and 'block',
+# for example, and other multiple tests against 'identifier'
+#! some error reporting is deprecated
+#
 class TokenSyntaxer:
     '''
     '''
@@ -36,7 +39,7 @@ class TokenSyntaxer:
         # Not where it is...
         self.prevLine = 1
         self.prevOffset = 1
-        self.treeRoot = ExpressionWithBody(trees.Trees.PathedIdentifier([],'TREE_ROOT'))
+        self.treeRoot = ExpressionWithBody(trees.Trees.noPathIdentifierValue('TREE_ROOT'))
         # let's go
         self.root()
 
@@ -172,9 +175,10 @@ class TokenSyntaxer:
         '''
         (IntNum | FloatNum | String) ~ option(KindAnnotation)
         '''
+        #print('const')
         commit = self.isToken('intNum') or self.isToken('floatNum') or self.isToken('string')
         if (not optional and not commit):
-            self.expectedRuleTokensError('Constant', ['intNum', 'floatNum', 'string']) 
+            self.expectedRuleTokensError('Constant Expression', ['intNum', 'floatNum', 'string']) 
         if (commit):
             cst = None
             if (self.isToken('intNum')):
@@ -188,7 +192,7 @@ class TokenSyntaxer:
             self.optionalKindAnnotation(cst)
         return commit
 
-    def identifierPath(self):
+    def identifierPath(self, isFunc):
         '''
         Must start on an identifier
         '''
@@ -202,45 +206,62 @@ class TokenSyntaxer:
             #pathedId.append((self.textOf(), self.position()))
             pathedId.append(self.textOf())
             self._next()
-        return trees.Trees.PathedIdentifier(pathedId[0:-1], pathedId[-1])
+        return trees.Trees.PathedIdentifier(pathedId[0:-1], pathedId[-1], False, isFunc)
         #return pathedId
 
 
-    def pathedIdentifier(self):
+    def pathedIdentifier(self, isFunc):
         self.ruleTokenMatch('Pathed Identifier', tokens['identifier'])
-        xPath = self.identifierPath()
+        xPath = self.identifierPath(isFunc)
         return xPath
+    '''
+    def valueCallExpression(self, lst):
+        commit = self.isToken('identifier')
+        if (commit):
+            #print('VALEXP' + self.textOf())
+            t = Expression(self.identifierPath(False), self.position())
+            lst.append(t)
+        return commit
+    '''
 
-    def identifierExpression(self, lst):
+    def callExpression(self, lst):
         '''
         id ~ ('(' ~ zeroOrMore(Expression) ~')' | constantExpression)
-        Used for all embedded expressions? 'func's? 
+        Used for all func calls, Will nest down to . 
         Constant allowable as param without brackets (?)
         '''
         commit = self.isToken('identifier')
         if (commit):
+            #print('call expression ' + self.textOf())
             #! Need to match at least one expression for further processing
             # Though there is the possibility of *one* parameter, which would
             # be ambiguous with a path?
-            t = Expression(self.identifierPath(), self.position())
+            # initially assume a data call expression
+            t = Expression(self.identifierPath(False), self.position())
             #t = Expression(self.textOf(), self.position())
+            t.isData = True
             lst.append(t)
             #self._next()
             commitParams = self.isToken('lbracket')
             if (commitParams):
+                # ok, brackets makes it a func call expression
+                t.actionMark = t.actionMark.toFunc()
+                t.isData = False
+                t.isFunc = True
                 self._next()
-                self.zeroOrMore(self.expression2, t.children)
+                self.zeroOrMore(self.expression, t.children)
                 self.ruleTokenSkip('Identifier Expression', tokens['rbracket'])
-                self.optionalKindAnnotation(t)
-            else:
-                self.constantExpression(t.children, False)
-
+            self.optionalKindAnnotation(t)
         return commit
 
-    def expression2(self, lst, optional):
+    def expression(self, lst, optional):
+        '''
+        constantExpression | callExpression
+        '''
+        #print('expression')
         commit = (
             self.constantExpression(lst, True) 
-            or self.identifierExpression(lst)
+            or self.callExpression(lst)
             )  
         if (not optional and not commit):
             self.expectedRulesError(['IdentifierExpression', 'Constant'])
@@ -268,21 +289,21 @@ class TokenSyntaxer:
        '''
        zeroOrMore(Expression)
        '''
-       self.zeroOrMore(self.expression2, lst)
+       self.zeroOrMore(self.expression, lst)
 
 
     ## Comment
-    def comment(self, l):
+    def comment(self, lst):
         commit = self.isToken('comment')
         if (commit):
-            l.append(Comment(self.textOf().strip(), self.position()))
+            lst.append(Comment(self.textOf().strip(), self.position()))
             self._next()
         return commit
 
-    def multilineComment(self, l):
+    def multilineComment(self, lst):
         commit = self.isToken('multilineComment')
         if (commit):
-            l.append(Comment(self.textOf().strip(), self.position()))
+            lst.append(Comment(self.textOf().strip(), self.position()))
             self._next()
         return commit
 
@@ -306,7 +327,7 @@ class TokenSyntaxer:
         commit = (self.isToken('identifier') and self.textOf() == 'val')
         #print(commit)
         if(commit):
-            t = Expression(trees.Trees.PathedIdentifier([], 'val'), self.position())
+            t = Expression(trees.Trees.noPathIdentifierValue('val'), self.position())
             lst.append(t)
             self._next()
             if(not self.isToken('identifier')):
@@ -314,11 +335,12 @@ class TokenSyntaxer:
             #mark = self.textOf()
             #t.setDefMark(mark)
             #t.defMark = mark
-            t.defMark = self.pathedIdentifier()
+            t.defMark = self.pathedIdentifier(False)
             t.mutable = t.defMark.identifier.endswith('!') 
+            t.isDef = True
             #self._next()
             # this is expression..
-            self.expression2(t.children, False)
+            self.expression(t.children, False)
         return commit
 
     def defineFunction(self, lst):
@@ -328,16 +350,17 @@ class TokenSyntaxer:
         '''
         commit = (self.isToken('identifier') and self.textOf() == 'fnc')
         if(commit):
-             t = ExpressionWithBody(trees.Trees.PathedIdentifier([],'fnc'), self.position())
+             t = ExpressionWithBody(trees.Trees.noPathIdentifierFunc('fnc'), self.position())
              lst.append(t)
              self._next()
-             #if(not self.isToken('identifier')):
-             #    self.expectedRuleTokenError('Define Function', tokens['identifier'])
+             if(not self.isToken('identifier')):
+                 self.expectedRuleTokenError('Define Function', tokens['identifier'])
              #! pathedIdentifier
              #t.setDefMark(self.textOf())
              #self._next()
              #t.setDefMark(self.pathedIdentifier())
-             t.defMark = self.pathedIdentifier()
+             t.defMark = self.pathedIdentifier(True)
+             t.isDef = True
              # generic params?
              self.parametersforDefine(t.children)
              self.explicitSeq(t.body)
@@ -350,12 +373,12 @@ class TokenSyntaxer:
         '''
         commit = (self.isToken('identifier') and self.textOf() == 'package')
         if(commit):
-             t = ExpressionWithBody(trees.Trees.PathedIdentifier([],'package'), self.position())
+             t = ExpressionWithBody(trees.Trees.noPathIdentifierValue('package'), self.position())
              lst.append(t)
              self._next()
              #t.setDefMark(self.pathedIdentifier())
-             t.defMark = self.pathedIdentifier()
-             # no params, to a body
+             t.defMark = self.pathedIdentifier(False)
+             # no params, goto a body
              self.explicitSeq(t.body)
         return commit 
 
@@ -363,13 +386,13 @@ class TokenSyntaxer:
         '''
         'import' ~ PathedIdentifier
         '''
+        #! no, needs to be pathed
         commit = (self.isToken('identifier') and self.textOf() == 'import')
         if(commit):
-             t = Expression(trees.Trees.PathedIdentifier([],'import'), self.position())
+             t = Expression(trees.Trees.noPathIdentifierFunc('import'), self.position())
              lst.append(t)
              self._next()
-             #t.setDefMark(self.pathedIdentifier())
-             t.defMark = self.pathedIdentifier()
+             t.defMark = self.pathedIdentifier(True)
         return commit 
 
     def seqContents(self, lst):
@@ -383,7 +406,7 @@ class TokenSyntaxer:
             or self.defineFunction(lst)
             or self.definePackage(lst)
             or self.defineImport(lst)
-            or self.expression2(lst, True)
+            or self.expression(lst, True)
             #or self.newline(t)
             ):
             #print('loo')
@@ -391,6 +414,7 @@ class TokenSyntaxer:
 
 
     def explicitSeq(self, lst):
+        #print('explicitSeq')
         self.ruleTokenSkip('Explicit Expression Seq', tokens['lbracket'])
         self.seqContents(lst)
         self.ruleTokenSkip('Explicit Expression Seq', tokens['rbracket'])

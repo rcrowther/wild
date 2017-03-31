@@ -11,9 +11,183 @@ ref const a: addr(dd 8)
 ~ var'addr
 ref a: addr(dd 8)
 
+== Constructs
+=== const
+val aaa = 4
 
-=== Syntax
+- value
+(if machine, becomes a const)
+val aaa< = 3
 
+=== data
+val aaa! = 4
+
+- value
+val aaa!< = 3
+
+=== func
+fnc blah()()
+
+===
+idempotent = always fives same result, gowever many times repeated
+reference transparency? Pure... ie doea not cause or need external effects? Reentrancy
+fnc blah!()()
+
+
+== Syntax
+Some constructs
+
+
+=== data def
+val zee! = 3.142
+
+tree:
+
+Exp{
+val
+def: zee
+children:
+Constant(3.142)
+}
+
+sc:
+allocSpace zee, <size>
+toSpace zee 3.142
+
+=== machine data call
+42
+
+tree:
+Constant(42)
+
+sc:
+42
+
+=== code data call
+zee
+
+tree:
+Exp{
+zee
+}
+
+sc:
+toReg rax,zee
+
+!# currently renders wrong (as 'call')
+
+=== machine func
++(76 9)
+
+tree:
+Exp{
++
+children:
+Const(76)
+Const(9)
+}
+
+sc:
+plus 76,9
+
+=== general func
+=== func def
+fnc funcBe! (aby!: int beeby! : int){}
+
+ExpBody{
+fnc
+funcBe
+children:
+Mark aby
+Mark beeby
+}
+
+#! wrong-what are these children?
+
+sc:
+fnc funcBe
+{
+allocSpace aby, <size>
+allocSpace beeby, <size>
+toSpace aby rdi
+toSpace beeby rdb
+}
+
+=== func call
+print zee
+
+tree:
+
+Exp{
+print
+children:
+Exp{
+zee
+}
+}
+
+sc:
+rax zee
+call print
+
+== val and func defs
+Func defs (must be body)
+
+ExpressionWithBody{
+idMark = 'fnc'
+defMark = 'funcBe'
+children: 
+  Mark aby
+  Mark beeby
+body:
+}
+sc:
+fnc funcBe
+{
+
+}
+
+Allocates 'name', sets 'body' as later executed 
+i.e.
+- 'func' causes placement in other memory
+- idMark becomes label 
+- handle child markers to be detected for liveness analysis as 'artificial' definition
+
+def val,
+
+Expression{
+idMark = 'val'
+defMark = 'zee'
+children:
+    3.142
+}
+sc:
+allocSpace zee, <size>
+toSpace zee 3.142
+
+Allocates 'name', sets to 'value' as executed here
+i.e 
+- 'val' causes allocation in other memory
+- idMark becomes target of assignment
+
+That the point. To be consistent, we should have,
+
+val zee (: Int[32])
+zee = 3.142
+
+Like C. But do we want to do that? 
+
+Downsides:
+Stacks of simple variables are a pain to declare
+
+Upsides:
+No inconsistency in unnesting
+
+Or split them in a phase?
+
+If both, allocate and assign, then 
+Is assignment a ground zero of unnesting? Like machine functions, needs no unnest? Not always, only if with constants, variables.  
+a 
 == CodeGen
 All this depends on architecture
 
