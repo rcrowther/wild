@@ -7,7 +7,7 @@ from Kinds import UnknownKind, Any, Kind, IntegerKind, FloatKind, StringKind
 import trees.Flags
 import Position
 
-from enumerations import ConstantKind, MachineRenderKind
+from enumerations import ConstantKind, RenderKind, MachineRenderKind
 from collections import namedtuple
 from util.codeUtils import StdPrint, StdSeqPrint
 
@@ -135,41 +135,31 @@ class Tree(StdSeqPrint):
         # They make an interface to information scattered
         # between architecture, type, and initial parsing 
         #? these are abstract categories, not machine code?
-        self.isConstant = False
-        self.isData = False
-        self.isFunc = False
+        #! convert to enum 
+        self.renderKind = RenderKind.unknown
         #used
         self.isMachine = False
         # Used to hold an enumeration of machinecode kinds
         #? Currently 8/32/64 num, but could be string types too?
-        self.machineKind = MachineRenderKind.not_machine
+        self.machineKind = MachineRenderKind.undetermined
         # used to hold the used (result) register when tree nodes
         # are shaped to machine code 
         self.register = None
         self.returnKind = UnknownKind
 
-    def treeTypeToString(self):
-       if (self.isConstant):
-         return 'isConstant'
-       elif(self.isData):
-         return 'isData'
-       elif(self.isFunc):
-         return 'isFunc'
-       else:
-         return '!tree type'
 
     def _addIndentedValue(self, b, indent, v):
        b.append(indent)
        b.append(v)
  
     def addPrettyString(self, b, indent):
-       self._addIndentedValue(b, indent, self.treeTypeToString())
+       self._addIndentedValue(b, indent, str(self.renderKind))
        b.append('\n')
-       self._addIndentedValue(b, indent, 'isMachine' if self.isMachine else '!Machine')
+       self._addIndentedValue(b, indent, 'isMachine' if self.isMachine else '!machine')
        b.append('\n')
        self._addIndentedValue(b, indent, str(self.machineKind))
        b.append('\n')
-       self._addIndentedValue(b, indent,  str(self.register) if self.register else '!Register')
+       self._addIndentedValue(b, indent,  str(self.register) if self.register else 'undetermined register')
        return b
 
     def addPrettyStringWrap(self, b, indent):
@@ -249,7 +239,7 @@ class Constant(Tree):
         ExpressionBase.__init__(self, position)
         StdSeqPrint.__init__(self, 'Constant')
         # it is, of some kind, be that isMachine or not, etc.
-        self.isConstant = True
+        self.renderKind = RenderKind.constant
         self.data = data
         self.tpe = tpe
         self.returnKind = Any
@@ -262,8 +252,8 @@ class Constant(Tree):
         return k
 
     def addPrettyString(self, b, indent):
-       #Tree.addPrettyString(self, b, indent)
-       #b.append('\n')
+       Tree.addPrettyString(self, b, indent)
+       b.append('\n')
        #b.append('returnKind: ')
        #self._addIndentedValue(b, indent, constantTypeToString[self.tpe])
        self._addIndentedValue(b, indent, str(self.tpe))
@@ -357,7 +347,7 @@ class ExpressionBase(Tree):
        b.append('\n')
        self._addIndentedValue(b, indent, self.returnKind.toString())
        b.append('\n')
-       self._addIndentedValue(b, indent, 'isDef' if self.isDef else '!Def')
+       self._addIndentedValue(b, indent, 'isDef' if self.isDef else '!def')
        b.append('\n')
        Tree.addPrettyString(self, b, indent)
        return b

@@ -29,10 +29,22 @@ class FuncRenderType(Enum):
     # a call renderable directly to 64 bit machine code
     MCODE64 = 6
 
+
+class RenderKind(Enum):
+    '''
+    annotates tree nodes, which are a loose collection of structures,
+    into general machine-orientated structures. See also 'MachineRenderKind'
+    '''
+    # should never be unknown, except as initialiser.
+    unknown = 0
+    constant = 1
+    data = 2
+    function = 3
+
 #? may also include strings?
 class MachineRenderKind(Enum):
     # Used as default 
-    not_machine = 0
+    undetermined = 0
     # is a call. This may be adapted by a phase if the
     # func code is capable of being rendered directly to
     # machine code 

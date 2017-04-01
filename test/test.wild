@@ -17,7 +17,7 @@ package wildTest (
 #fnc funcBe! (aby!: int beeby! : int)()
 
 # machine func call
-+(zee 9)
++(zee() 9)
 
 # code func call
 #print(zee 15)

@@ -6,7 +6,7 @@ from trees.TreeTraverser import CallbackTraverser, CallbackBodyBuilder
 from trees.Trees import Constant, Mark, Expression, ExpressionWithBody, PathedIdentifier
 
 #from enumerations import FuncRenderType, MachineRenderKind
-from enumerations import MachineRenderKind
+from enumerations import RenderKind, MachineRenderKind
 from codeGen.architectureContext import ABSTRACT
 from util.codeUtils import StdPrint
 
@@ -17,7 +17,7 @@ mCodeNumericFunctions = [
     '$$minus$',
     '$$mult$',
     '$$divide$'
-    #'$$assign$'
+    '$$assign$'
     ]
 
 
@@ -58,8 +58,12 @@ class FunctionCategorize(CallbackTraverser):
     #! must cover assign children too... or is that all children?
     #? but I think it do?
     def constant(self, tree):
-      # (tree.tpe == ConstantKind.integerNum and tree.data < machinemax and tree.data > machinemin
-      tree.isMachine = True
+      if (tree.tpe == ConstantKind.integerNum):
+        isMachine = (
+          int(tree.data) <= self.mCodeContext.architectureContext.maxInteger 
+          and int(tree.data) >= self.mCodeContext.architectureContext.minInteger
+        )
+        tree.isMachine = isMachine
       #if (tree.tpe == ConstantKind.string and ???)
 
 
@@ -69,19 +73,45 @@ class FunctionCategorize(CallbackTraverser):
       # should be set by now?
       #tree.isFunc = tree.actionMark.isFunc
       if (
-      tree.isFunc
+      tree.renderKind == RenderKind.function
       and (tree.actionMark.identifier in mCodeNumericFunctions)
       #and kind.bounds < platform.maxNum
       ):
         tree.isMachine = True
+        tree.isMachine = True
         tree.machineKind = MachineRenderKind.num64bit
 
       if (
-      tree.isData
+      tree.renderKind == RenderKind.data
       #and kind.bounds < platform.maxNum
       ):
         tree.isMachine = True
 
+#####################################################     
+#! not working?
+#! only one level
+class RenderCategorizePropagate(CallbackTraverser):
+    def __init__(self, mCodeContext, tree, reporter):
+      self.reporter = reporter
+      self.mCodeContext = mCodeContext
+      #print('intern tree' +  tree.toString())
+      CallbackTraverser.__init__(self, tree)
+
+    def _subPropagate(self, tree):
+      if (
+      tree.renderKind == RenderKind.function
+      #and kind.bounds < platform.maxNum
+      ):
+        isMachine = tree.isMachine
+        for e in tree.children:
+          isMachine = isMachine and tree.isMachine
+        tree.isMachine = isMachine
+
+    def expression(self, tree):
+        self._subPropagate(tree)
+
+    #def expressionWithBody(self, tree):
+        #self.subPropagate(tree)
 #####################################################
 '''
 = Rules of unnesting
@@ -246,7 +276,7 @@ class FuncUnnest2(CallbackBodyBuilder):
     {} = a body (otherwise this extraction creates another parameter!)
     '''
     def __init__(self, tree, newNames, architectureContext):
-      print('unnest2!!!')
+      #print('unnest2!!!')
       assert(isinstance(tree, ExpressionWithBody))              
       assert(tree.actionMark.identifier == 'TREE_ROOT')
       #self.nameGenerator = UnparsedNameGenerator()
@@ -284,6 +314,11 @@ class FuncUnnest2(CallbackBodyBuilder):
         e = Expression(noPathIdentifierFunc('$$assign$'))
         e.defMark = noPathIdentifierFunc(toName)
         e.children.append(fromExp)
+        # isMachine can be transferrred to an assign
+        #? the kind can be too, but is only temporary, others may assign
+        e.renderKind = RenderKind.function
+        e.isMachine = fromExp.isMachine
+        e.machineKind = fromExp.machineKind
         e.register = register
         e.isDefinitionFromCompiler = True
         b.append(e)
@@ -345,9 +380,9 @@ class FuncUnnest2(CallbackBodyBuilder):
     '''
 
     def assignTree(self, b, tree, toName, register=None):
-        if (isinstance(tree, Constant)):
+        if (tree.renderKind == RenderKind.constant):
           self.addExpressionAssign(b, toName, tree, register)
-        elif (not tree.actionMark.isFunc):
+        elif (not tree.renderKind == RenderKind.function):
           #self.addDataCallAssign(b, toName, tree.actionMark, register = None)
           self.addExpressionAssign(b, toName, tree, register)
           pass
@@ -407,7 +442,7 @@ class FuncUnnest2(CallbackBodyBuilder):
         if(
           #child.renderCategory == FuncRenderType.CALL
           #and child.actionMark.isFunc 
-          child.isFunc 
+          child.renderKind == RenderKind.function 
         ):
           newName = self.newNames.get()
           child = exp.children[1]
@@ -432,7 +467,7 @@ class FuncUnnest2(CallbackBodyBuilder):
         print('dispatch: ' + exp.actionMark.identifier)
         if (
         #exp.renderCategory == FuncRenderType.CALL
-        exp.isFunc
+        exp.renderKind == RenderKind.function
         ):
           if(not exp.isMachine):
             self._unnestCodeCallParams(b, exp)
@@ -971,7 +1006,7 @@ class TreeToSplicecode():
               self.b.append(tree.defMark.identifier)
               self._newLine()
       #elif(tree.renderCategory != FuncRenderType.CALL):
-      elif(tree.isData and tree.isMachine):
+      elif(tree.RenderKind == RenderKind.data and tree.isMachine):
           # machine data call
           opId = tree.actionMark.identifier
           machineOp = self.machineOps.get(opId)
@@ -987,7 +1022,7 @@ class TreeToSplicecode():
           self._params(tree)
           self._newLine()
       else:
-        if(tree.actionMark.isFunc):
+        if(tree.renderKind == RenderKind.function):
             # code func call
             #! do better with identifier paths (depends on them validating?)
             self.b.append('call ')

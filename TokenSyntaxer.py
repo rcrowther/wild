@@ -8,7 +8,7 @@ from trees import *
 import trees.Trees
 from Kinds import *
 from wildio import *
-
+from enumerations import RenderKind
 
 ##!
 # Position/reporter
@@ -239,15 +239,14 @@ class TokenSyntaxer:
             # initially assume a data call expression
             t = Expression(self.identifierPath(False), self.position())
             #t = Expression(self.textOf(), self.position())
-            t.isData = True
+            t.renderKind = RenderKind.data
             lst.append(t)
             #self._next()
             commitParams = self.isToken('lbracket')
             if (commitParams):
                 # ok, brackets makes it a func call expression
                 t.actionMark = t.actionMark.toFunc()
-                t.isData = False
-                t.isFunc = True
+                t.renderKind = RenderKind.function
                 self._next()
                 self.zeroOrMore(self.expression, t.children)
                 self.ruleTokenSkip('Identifier Expression', tokens['rbracket'])

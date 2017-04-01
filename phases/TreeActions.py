@@ -57,6 +57,8 @@ class SplitVals(CallbackTraverser):
             syntheticDelivery = Expression(noPathIdentifierFunc('$$assign$'))
             syntheticDelivery.defMark = t.defMark
             syntheticDelivery.children = t.children
+            syntheticDelivery.RenderKind = RenderKind.function
+            syntheticDelivery.isMachine = True
 
             # reduce t to a definition 
             # (asserting, should be true?) 
@@ -126,13 +128,17 @@ class Intern(CallbackTraverser):
       self.expSymbolTable.add(tree.actionMark.identifier)
 
 
-
+#? No ?!<$# 
 normalizedSymbols = {
 '+' : '$$plus$',
 '-' : '$$minus$',
 '*' : '$$mult$',
 '%' : '$$divide$',
 '=' : '$$assign$',
+'^' : '$$cap$',
+'&' : '$$amp$',
+'~' : '$$tithe$',
+'@' : '$$at$',
 # TODO: Allow underscore, but what about initial underscore?
 # use '$$$' in place?
 '_' : '_',

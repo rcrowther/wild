@@ -102,6 +102,7 @@ class RunnerContext:
        # to see operators etc.? (what about FunctionCategorizePhase?)
        #phases.NASMPreprocessPhase(self.reporter, self.settings),
        phases.LinearizePhases.FunctionCategorizePhase(self.codeGenContext, self.reporter, self.settings),
+       phases.LinearizePhases.RenderCategorizePropagatePhase(self.codeGenContext, self.reporter, self.settings),
        phases.LinearizePhases.FunctionUnnestPhase(self.architectureContext),
        phases.LinearizePhases.ParseLiveRangesPhase(self.reporter),
        phases.LinearizePhases.ChooseRegistersPhase(self.architectureContext, self.reporter),

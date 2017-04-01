@@ -4,7 +4,7 @@
 from Phase import Phase
 #from reporters import Reporter
 #from phases.TreeActions import  
-from phases.LinearizeActions import FunctionCategorize, FuncUnnest, FuncUnnest2, ParseLiveRanges, ChooseRegisters, ApplyRegistersToTree, TreeToSplicecode
+from phases.LinearizeActions import FunctionCategorize, RenderCategorizePropagate, FuncUnnest, FuncUnnest2, ParseLiveRanges, ChooseRegisters, ApplyRegistersToTree, TreeToSplicecode
 
 
 ##################################################################
@@ -33,6 +33,31 @@ class FunctionCategorizePhase(Phase):
       tree = compilationUnit.tree
       FunctionCategorize(self.mCodeContext, tree, self.reporter)
 
+##################################################################
+
+
+class RenderCategorizePropagatePhase(Phase):
+    '''
+    Since this includes a context, place as late as possible, but before 
+    other machine code phases (which rely on this)
+    '''
+    def __init__(self, mCodeContext, reporter, settings):
+        self.mCodeContext = mCodeContext
+        self.reporter = reporter
+        self.settings = settings
+
+        Phase.__init__(self,
+            "RenderCategorizePropagate",
+            "Passes rendering categorisation along the tree",
+            True,
+            placeAfterSeq=['MarkNormalize', 'FunctionCategorizePhase']
+            )
+
+
+    def run(self, compilationUnit):
+      tree = compilationUnit.tree
+      RenderCategorizePropagate(self.mCodeContext, tree, self.reporter)
+
 ################################################################
 class FunctionUnnestPhase(Phase):
     '''
@@ -59,6 +84,7 @@ class FunctionUnnestPhase(Phase):
     def run(self, compilationUnit):
       tree = compilationUnit.tree
       FuncUnnest2(tree, compilationUnit.newNames, self.architectureContext)
+
 
 
 ################################################

@@ -16,9 +16,15 @@ class ArchitectureContext():
     '''
     @param callNoSaveRequired registers usable within subprograms which the call may destroy, so no save required
     '''
-    #!
+    #! max/min is very crude for advanced numerical computing e.g.
+    # - unsigned
+    # - can the compiler code handle the numbers themselves
+    # - what about endedness?
+    # - and other numeric representations
     def __init__(
       self,
+      maxInteger,
+      minInteger,
       registerNames,
       callConventionRegisterNames,
       #! refactor to callNoSaveRequiredRegisterNames
@@ -27,6 +33,8 @@ class ArchitectureContext():
       floatReturnRegister,
       hasMMX = False
       ):
+      self.maxInteger = maxInteger
+      self.minInteger = minInteger
       self.registerNames = registerNames
       self.registerNamesSize = len(registerNames)
       self.callRegisterNames = callConventionRegisterNames
@@ -71,6 +79,12 @@ class ArchitectureContext():
 class X64ArchitectureContext(ArchitectureContext):
     def __init__(self):
         ArchitectureContext.__init__(self, 
+            # maxInteger
+            #9223372036854775807,
+            8,
+            # minInteger
+            #-9223372036854775808,
+            -8,
             # registerNames
             ['rax', 'rbx', 'rcx', 'rdx', 'r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r7', 'r8', 'r9', 'r10', 'r11', 'r12', 'r13', 'r15'],
             # callConventionRegisterNames
